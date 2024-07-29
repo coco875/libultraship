@@ -1,6 +1,5 @@
 #pragma once
 
-#include <string>
 #include <vector>
 #ifdef GFX_DEBUG_DISASSEMBLER
 #include <gfxd.h>
@@ -8,7 +7,7 @@
 
 union F3DGfx;
 
-namespace LUS {
+namespace Fast {
 
 class GfxDebugger {
   public:
@@ -40,4 +39,4 @@ class GfxDebugger {
     std::vector<const F3DGfx*> mBreakPoint = {};
 };
 
-} // namespace LUS
+} // namespace Fast

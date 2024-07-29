@@ -19,7 +19,7 @@
 #ifndef _LANGUAGE_C
 #define _LANGUAGE_C
 #endif
-#include "debug/GfxDebugger.h"
+#include "graphic/Fast3D/debug/GfxDebugger.h"
 #include "libultraship/libultra/types.h"
 //#include "libultraship/libultra/gs2dex.h"
 #include <string>
@@ -57,12 +57,15 @@ using namespace std;
 #define SCALE_3_8(VAL_) ((VAL_)*0x24)
 #define SCALE_8_3(VAL_) ((VAL_) / 0x24)
 
-// Based off the current set native dimensions
-#define HALF_SCREEN_WIDTH (gfx_native_dimensions.width / 2)
-#define HALF_SCREEN_HEIGHT (gfx_native_dimensions.height / 2)
+// Based off the current set native dimensions or active framebuffer
+#define HALF_SCREEN_WIDTH ((fbActive ? active_fb->second.orig_width : gfx_native_dimensions.width) / 2)
+#define HALF_SCREEN_HEIGHT ((fbActive ? active_fb->second.orig_height : gfx_native_dimensions.height) / 2)
 
-#define RATIO_X (gfx_current_dimensions.width / (2.0f * HALF_SCREEN_WIDTH))
-#define RATIO_Y (gfx_current_dimensions.height / (2.0f * HALF_SCREEN_HEIGHT))
+// Ratios for current window dimensions or active framebuffer scaled size
+#define RATIO_X \
+    ((fbActive ? active_fb->second.applied_width : gfx_current_dimensions.width) / (2.0f * HALF_SCREEN_WIDTH))
+#define RATIO_Y \
+    ((fbActive ? active_fb->second.applied_height : gfx_current_dimensions.height) / (2.0f * HALF_SCREEN_HEIGHT))
 
 #define TEXTURE_CACHE_MAX_SIZE 500
 
@@ -335,29 +338,34 @@ static void gfx_generate_cc(struct ColorCombiner* comb, const ColorCombinerKey& 
                         break;
                     case G_CCMUX_TEXEL0:
                         val = SHADER_TEXEL0;
-                        used_textures[0] = true;
-                        if (is_2cyc) {
+                        // Set the opposite texture when reading from the second cycle color options
+                        if (i == 0) {
+                            used_textures[0] = true;
+                        } else {
                             used_textures[1] = true;
                         }
                         break;
                     case G_CCMUX_TEXEL1:
                         val = SHADER_TEXEL1;
-                        used_textures[1] = true;
-                        if (is_2cyc) {
+                        if (i == 0) {
+                            used_textures[1] = true;
+                        } else {
                             used_textures[0] = true;
                         }
                         break;
                     case G_CCMUX_TEXEL0_ALPHA:
                         val = SHADER_TEXEL0A;
-                        used_textures[0] = true;
-                        if (is_2cyc) {
+                        if (i == 0) {
+                            used_textures[0] = true;
+                        } else {
                             used_textures[1] = true;
                         }
                         break;
                     case G_CCMUX_TEXEL1_ALPHA:
                         val = SHADER_TEXEL1A;
-                        used_textures[1] = true;
-                        if (is_2cyc) {
+                        if (i == 0) {
+                            used_textures[1] = true;
+                        } else {
                             used_textures[0] = true;
                         }
                         break;
@@ -400,15 +408,18 @@ static void gfx_generate_cc(struct ColorCombiner* comb, const ColorCombinerKey& 
                         break;
                     case G_ACMUX_TEXEL0:
                         val = SHADER_TEXEL0;
-                        used_textures[0] = true;
-                        if (is_2cyc) {
+                        // Set the opposite texture when reading from the second cycle color options
+                        if (i == 0) {
+                            used_textures[0] = true;
+                        } else {
                             used_textures[1] = true;
                         }
                         break;
                     case G_ACMUX_TEXEL1:
                         val = SHADER_TEXEL1;
-                        used_textures[1] = true;
-                        if (is_2cyc) {
+                        if (i == 0) {
+                            used_textures[1] = true;
+                        } else {
                             used_textures[0] = true;
                         }
                         break;
@@ -2290,8 +2301,15 @@ static void gfx_draw_rectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_t lr
     ur->w = 1.0f;
 
     // The coordinates for texture rectangle shall bypass the viewport setting
-    struct XYWidthHeight default_viewport = { 0, gfx_native_dimensions.height, gfx_native_dimensions.width,
-                                              gfx_native_dimensions.height };
+    struct XYWidthHeight default_viewport;
+    if (!fbActive) {
+        default_viewport = { 0, (int16_t)gfx_native_dimensions.height, gfx_native_dimensions.width,
+                             gfx_native_dimensions.height };
+    } else {
+        default_viewport = { 0, (int16_t)active_fb->second.orig_height, active_fb->second.orig_width,
+                             active_fb->second.orig_height };
+    }
+
     struct XYWidthHeight viewport_saved = g_rdp.viewport;
     uint32_t geometry_mode_saved = g_rsp.geometry_mode;
 
