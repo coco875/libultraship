@@ -52,7 +52,6 @@ bool GfxDebugger::HasBreakPoint(const std::vector<const F3DGfx*>& path) const {
     return true;
 }
 
-<<<<<<< HEAD:src/debug/GfxDebugger.cpp
 #ifdef GFX_DEBUG_DISASSEMBLER
 
 gfxd_ucode_t GfxDebugger::GetUcode(void) {
@@ -78,7 +77,4 @@ void GfxDebugger::SetUcode(uint32_t ucode) {
 }
 #endif
 
-} // namespace LUS
-=======
 } // namespace Fast
->>>>>>> main:src/graphic/Fast3D/debug/GfxDebugger.cpp
