@@ -1,5 +1,7 @@
 #include "GfxDebugger.h"
+#ifdef GFX_DEBUG_DISASSEMBLER
 #include <gfxd.h>
+#endif
 #include <spdlog/spdlog.h>
 
 namespace Fast {
