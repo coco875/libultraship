@@ -27,6 +27,9 @@
 #include "graphic/Fast3D/gfx_metal.h"
 #include <imgui_impl_metal.h>
 #include <imgui_impl_sdl2.h>
+#include "imgui_impl_bgfx.h"
+#include "Fast3D/Fast3dWindow.h"
+
 #else
 #include <SDL2/SDL_hints.h>
 #include <SDL2/SDL_video.h>
@@ -159,6 +162,8 @@ void Gui::Init(GuiWindowInitData windowImpl) {
     CVarClear(CVAR_DROPPED_FILE);
 }
 
+#define BX_PLATFORM_OSX 1
+
 void Gui::ImGuiWMInit() {
     switch (Context::GetInstance()->GetWindow()->GetWindowBackend()) {
         case WindowBackend::FAST3D_SDL_OPENGL:
@@ -166,11 +171,22 @@ void Gui::ImGuiWMInit() {
             SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
             ImGui_ImplSDL2_InitForOpenGL(static_cast<SDL_Window*>(mImpl.Opengl.Window), mImpl.Opengl.Context);
             break;
+        case WindowBackend::FAST3D_SDL_BGFX: {
+            auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetInstance()->GetWindow());
+            auto window = (SDL_Window*) wnd->GetWindowPtr();
+#if BX_PLATFORM_WINDOWS
+            ImGui_ImplSDL2_InitForD3D(window);
+#elif BX_PLATFORM_OSX
+            ImGui_ImplSDL2_InitForMetal(window);
+#elif BX_PLATFORM_LINUX || BX_PLATFORM_EMSCRIPTEN
+            ImGui_ImplSDL2_InitForOpenGL(window, nullptr);
+#endif
+            break;
+        }
 #if __APPLE__
         case WindowBackend::FAST3D_SDL_METAL:
             SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
             SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
-            ImGui_ImplSDL2_InitForMetal(static_cast<SDL_Window*>(mImpl.Metal.Window));
             break;
 #endif
 #if defined(ENABLE_DX11) || defined(ENABLE_DX12)
@@ -196,7 +212,9 @@ void Gui::ImGuiBackendInit() {
 #endif
             break;
 #endif
-
+        case WindowBackend::FAST3D_SDL_BGFX:
+            ImGui_Implbgfx_Init(255);
+            break;
 #ifdef __APPLE__
         case WindowBackend::FAST3D_SDL_METAL:
             Metal_Init(mImpl.Metal.Renderer);
@@ -251,6 +269,7 @@ bool Gui::SupportsViewports() {
             return true;
         case WindowBackend::FAST3D_SDL_OPENGL:
         case WindowBackend::FAST3D_SDL_METAL:
+        case WindowBackend::FAST3D_SDL_BGFX:
             return true;
         default:
             return false;
@@ -266,6 +285,7 @@ void Gui::Update(WindowEvent event) {
     switch (Context::GetInstance()->GetWindow()->GetWindowBackend()) {
         case WindowBackend::FAST3D_SDL_OPENGL:
         case WindowBackend::FAST3D_SDL_METAL:
+        case WindowBackend::FAST3D_SDL_BGFX:
             ImGui_ImplSDL2_ProcessEvent(static_cast<const SDL_Event*>(event.Sdl.Event));
 #if defined(__ANDROID__) || defined(__IOS__)
             Mobile::ImGuiProcessEvent(mImGuiIo->WantTextInput);
@@ -417,7 +437,10 @@ void Gui::ImGuiBackendNewFrame() {
         case WindowBackend::FAST3D_SDL_METAL:
             Metal_NewFrame(mImpl.Metal.Renderer);
             break;
-#endif
+#endif  
+        case WindowBackend::FAST3D_SDL_BGFX:
+            ImGui_Implbgfx_NewFrame();
+            break;
         default:
             break;
     }
@@ -427,6 +450,7 @@ void Gui::ImGuiWMNewFrame() {
     switch (Context::GetInstance()->GetWindow()->GetWindowBackend()) {
         case WindowBackend::FAST3D_SDL_OPENGL:
         case WindowBackend::FAST3D_SDL_METAL:
+        case WindowBackend::FAST3D_SDL_BGFX:
             ImGui_ImplSDL2_NewFrame();
             break;
 #ifdef ENABLE_DX11
@@ -718,6 +742,9 @@ void Gui::ImGuiRenderDrawData(ImDrawData* data) {
             ImGui_ImplDX11_RenderDrawData(data);
             break;
 #endif
+        case WindowBackend::FAST3D_SDL_BGFX:
+            ImGui_Implbgfx_RenderDrawLists(data);
+            break;
         default:
             break;
     }

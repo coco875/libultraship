@@ -7,6 +7,7 @@
 #include "graphic/Fast3D/gfx_dxgi.h"
 #include "graphic/Fast3D/gfx_opengl.h"
 #include "graphic/Fast3D/gfx_metal.h"
+#include "graphic/Fast3D/gfx_bgfx.h"
 #include "graphic/Fast3D/gfx_direct3d11.h"
 #include "graphic/Fast3D/gfx_direct3d12.h"
 #include "graphic/Fast3D/gfx_pc.h"
@@ -30,6 +31,7 @@ Fast3dWindow::Fast3dWindow(std::vector<std::shared_ptr<Ship::GuiWindow>> guiWind
     }
 #endif
     AddAvailableWindowBackend(Ship::WindowBackend::FAST3D_SDL_OPENGL);
+    AddAvailableWindowBackend(Ship::WindowBackend::FAST3D_SDL_BGFX);
 }
 
 Fast3dWindow::~Fast3dWindow() {
@@ -124,6 +126,10 @@ void Fast3dWindow::InitWindowManager() {
             mWindowManagerApi = &gfx_sdl;
             break;
 #endif
+        case Ship::WindowBackend::FAST3D_SDL_BGFX:
+            mRenderingApi = &gfx_bgfx_api;
+            mWindowManagerApi = &gfx_sdl;
+            break;
         default:
             SPDLOG_ERROR("Could not load the correct rendering backend");
             break;
@@ -263,5 +269,9 @@ void Fast3dWindow::OnFullscreenChanged(bool isNowFullscreen) {
     } else {
         wnd->SetCursorVisibility(true);
     }
+}
+
+void* Fast3dWindow::GetWindowPtr(){
+    return this->mWindowManagerApi->get_window_ptr();
 }
 } // namespace Fast

@@ -9,7 +9,7 @@
 #include "window/gui/Gui.h"
 
 namespace Ship {
-enum class WindowBackend { FAST3D_DXGI_DX11, FAST3D_SDL_OPENGL, FAST3D_SDL_METAL, WINDOW_BACKEND_COUNT };
+enum class WindowBackend { FAST3D_DXGI_DX11, FAST3D_SDL_OPENGL, FAST3D_SDL_METAL, FAST3D_SDL_BGFX, WINDOW_BACKEND_COUNT };
 
 class Config;
 

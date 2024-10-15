@@ -1,4 +1,5 @@
 #include "window/Window.h"
+#define ENABLE_OPENGL 1
 #ifdef ENABLE_OPENGL
 
 #include <stdint.h>

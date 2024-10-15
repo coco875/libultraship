@@ -27,6 +27,7 @@ struct GfxWindowManagerAPI {
     bool (*is_running)(void);
     void (*destroy)(void);
     bool (*is_fullscreen)(void);
+    void* (*get_window_ptr)(void);
 };
 
 #endif

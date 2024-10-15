@@ -99,4 +99,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ThreadPool)
 
+#=================== BGFX ===================
+set(BGFX_CONFIG_MULTITHREADED OFF)
+FetchContent_Declare(
+	bgfx
+	GIT_REPOSITORY https://github.com/bkaradzic/bgfx.cmake
+	GIT_TAG 701d84c2227e9219ad44c760e75c3c6f24a2cff0
+)
+FetchContent_MakeAvailable(bgfx)
+
 list(APPEND ADDITIONAL_LIB_INCLUDES ${threadpool_SOURCE_DIR}/include)

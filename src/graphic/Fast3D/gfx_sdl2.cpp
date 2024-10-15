@@ -313,6 +313,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
 
 #if defined(__APPLE__)
     bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0;
+    bool use_metal = false;
 #else
     bool use_opengl = true;
 #endif
@@ -321,15 +322,21 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    } else {
+    }
+
+    if (use_metal) {
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
     }
 
 #if defined(__APPLE__)
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+
+    if (use_opengl) {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    }
+
 #endif
 
 #ifdef _WIN32
@@ -352,7 +359,9 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
 
     if (use_opengl) {
         flags = flags | SDL_WINDOW_OPENGL;
-    } else {
+    }
+
+    if (use_metal) {
         flags = flags | SDL_WINDOW_METAL;
     }
 
@@ -387,7 +396,9 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
         SDL_GL_SetSwapInterval(vsync_enabled ? 1 : 0);
 
         window_impl.Opengl = { wnd, ctx };
-    } else {
+    }
+
+    if (use_metal) {
         uint32_t flags = SDL_RENDERER_ACCELERATED;
         if (vsync_enabled) {
             flags |= SDL_RENDERER_PRESENTVSYNC;
@@ -577,7 +588,7 @@ static inline void sync_framerate_with_timer(void) {
 
 static void gfx_sdl_swap_buffers_begin(void) {
     sync_framerate_with_timer();
-    SDL_GL_SwapWindow(wnd);
+//    SDL_GL_SwapWindow(wnd);
 }
 
 static void gfx_sdl_swap_buffers_end(void) {
@@ -618,6 +629,10 @@ bool gfx_sdl_is_fullscreen(void) {
     return fullscreen_state;
 }
 
+void* gfx_sdl_get_window_ptr(void) {
+    return (void*) wnd;
+}
+
 struct GfxWindowManagerAPI gfx_sdl = { gfx_sdl_init,
                                        gfx_sdl_close,
                                        gfx_sdl_set_keyboard_callbacks,
@@ -637,6 +652,7 @@ struct GfxWindowManagerAPI gfx_sdl = { gfx_sdl_init,
                                        gfx_sdl_can_disable_vsync,
                                        gfx_sdl_is_running,
                                        gfx_sdl_destroy,
-                                       gfx_sdl_is_fullscreen };
+                                       gfx_sdl_is_fullscreen,
+                                       gfx_sdl_get_window_ptr };
 
 #endif
