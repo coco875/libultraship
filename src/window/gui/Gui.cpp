@@ -27,7 +27,7 @@
 #include "graphic/Fast3D/gfx_metal.h"
 #include <imgui_impl_metal.h>
 #include <imgui_impl_sdl2.h>
-#include "imgui_impl_bgfx.h"
+#include "graphic/Fast3D/bgfx/imgui_impl_bgfx.h"
 #include "Fast3D/Fast3dWindow.h"
 
 #else

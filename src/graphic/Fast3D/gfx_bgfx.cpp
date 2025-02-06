@@ -11,7 +11,7 @@
 
 #include "gfx_cc.h"
 #include "gfx_rendering_api.h"
-#include "imgui_impl_bgfx.h"
+#include "bgfx/imgui_impl_bgfx.h"
 #include "window/gui/Gui.h"
 #include "window/Window.h"
 #include "gfx_pc.h"
@@ -82,9 +82,9 @@ static void gfx_bgfx_init(void) {
     bgfx_init.platformData = pd;
     bgfx::init(bgfx_init);
 
-    bgfx::setViewClear(kClearView, BGFX_CLEAR_COLOR);
-    bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
-    bgfx::touch(kClearView);
+    bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
+    bgfx::setViewRect(0, 0, 0, bgfx::BackbufferRatio::Equal);
+    bgfx::touch(0);
 }
 
 static int gfx_bgfx_get_max_texture_size() {
@@ -142,21 +142,21 @@ static void gfx_bgfx_select_texture(int tile, uint32_t texture_id) {
 }
 
 static void gfx_bgfx_upload_texture(const uint8_t* rgba32_buf, uint32_t width, uint32_t height) {
-    TextureDataBGFX* texture_data = &context.textures[context.current_texture_ids[context.current_tile]];
+    // TextureDataBGFX* texture_data = &context.textures[context.current_texture_ids[context.current_tile]];
 
-    bimg::ImageContainer* image = bimg::imageAlloc(
-        entry::getAllocator(),
-        bimg::TextureFormat::RGBA32U,
-        width,
-        height,
-        1,
-        1,
-        false,
-        false,
-        rgba32_buf
-    );
+    // bimg::ImageContainer* image = bimg::imageAlloc(
+    //     entry::getAllocator(),
+    //     bimg::TextureFormat::RGBA32U,
+    //     width,
+    //     height,
+    //     1,
+    //     1,
+    //     false,
+    //     false,
+    //     rgba32_buf
+    // );
 
-    context.
+    // context.
 }
 
 static void gfx_bgfx_set_sampler_parameters(int tile, bool linear_filter, uint32_t cms, uint32_t cmt) {
@@ -228,7 +228,7 @@ void gfx_bgfx_start_draw_to_framebuffer(int fb_id, float noise_scale) {
 
 }
 
-void gfx_bgfx_clear_framebuffer() {
+void gfx_bgfx_clear_framebuffer(bool color, bool depth) {
 
 }
 
