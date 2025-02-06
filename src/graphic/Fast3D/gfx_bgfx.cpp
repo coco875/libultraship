@@ -37,6 +37,8 @@ struct TextureDataBGFX {
     bgfx::TextureHandle ptr = BGFX_INVALID_HANDLE;
 };
 
+bgfx::ViewId kClearView = 0;
+
 struct BGFXContext {
     const bgfx::ViewId kClearView = 0;
     std::vector<TextureDataBGFX> textures;
@@ -82,9 +84,9 @@ static void gfx_bgfx_init(void) {
     bgfx_init.platformData = pd;
     bgfx::init(bgfx_init);
 
-    bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
-    bgfx::setViewRect(0, 0, 0, bgfx::BackbufferRatio::Equal);
-    bgfx::touch(0);
+    bgfx::setViewClear(kClearView, BGFX_CLEAR_COLOR);
+    bgfx::setViewRect(kClearView, 0, 0, bgfx::BackbufferRatio::Equal);
+    bgfx::touch(kClearView);
 }
 
 static int gfx_bgfx_get_max_texture_size() {
@@ -229,7 +231,14 @@ void gfx_bgfx_start_draw_to_framebuffer(int fb_id, float noise_scale) {
 }
 
 void gfx_bgfx_clear_framebuffer(bool color, bool depth) {
-
+    uint16_t flags = 0;
+    if (color) {
+        flags |= BGFX_CLEAR_COLOR;
+    }
+    if (depth) {
+        flags |= BGFX_CLEAR_DEPTH;
+    }
+    bgfx::setViewClear(kClearView, flags);
 }
 
 void gfx_bgfx_resolve_msaa_color_buffer(int fb_id_target, int fb_id_source) {

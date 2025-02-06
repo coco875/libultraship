@@ -44,6 +44,8 @@ void ImGui_Implbgfx_RenderDrawLists(ImDrawData* draw_data)
         return;
     }
 
+    bgfx::setViewClear(g_View, BGFX_CLEAR_COLOR);
+
     draw_data->ScaleClipRects(io.DisplayFramebufferScale);
 
     // Setup render state: alpha-blending enabled, no face culling,
