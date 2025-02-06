@@ -21,14 +21,12 @@
 #include <SDL_syswm.h>
 #include "Context.h"
 #include "imgui_impl_sdl2.h"
-#include "bgfx/platform.h"
-#include "_deps/bgfx-src/bimg/include/bimg/bimg.h"
-#include "_deps/bgfx-src/bgfx/examples/common/entry/entry.h"
+#include "bx/platform.h"
+// #include "_deps/bgfx-src/bimg/include/bimg/bimg.h"
+// #include "_deps/bgfx-src/bgfx/examples/common/entry/entry.h"
 
 #include <vector>
 #include <algorithm>
-
-#define BX_PLATFORM_OSX 1
 
 struct TextureDataBGFX {
     uint16_t width;
@@ -67,8 +65,16 @@ static void gfx_bgfx_init(void) {
 #elif BX_PLATFORM_OSX
     pd.nwh = wmi.info.cocoa.window;
 #elif BX_PLATFORM_LINUX
-    pd.ndt = wmi.info.x11.display;
-    pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
+    if (wmi.subsystem == SDL_SYSWM_WAYLAND) {
+        pd.nwh = (void*)(uintptr_t)wmi.info.wl.surface;
+        pd.ndt = wmi.info.wl.display;
+        pd.type = bgfx::NativeWindowHandleType::Wayland;
+    }
+    else {
+        pd.nwh = (void*)(uintptr_t)wmi.info.x11.window;
+        pd.ndt = wmi.info.x11.display;
+        pd.type = bgfx::NativeWindowHandleType::Default;
+    }
 #elif BX_PLATFORM_EMSCRIPTEN
     pd.nwh = (void*)"#canvas";
 #endif

@@ -17,6 +17,9 @@
 #include "window/gui/Fonts.h"
 #include "window/gui/resource/GuiTextureFactory.h"
 #include "graphic/Fast3D/gfx_rendering_api.h"
+#include "graphic/Fast3D/bgfx/imgui_impl_bgfx.h"
+#include "Fast3D/Fast3dWindow.h"
+#include "bx/platform.h"
 
 #include "window/gui/GfxDebuggerWindow.h"
 
@@ -27,8 +30,6 @@
 #include "graphic/Fast3D/gfx_metal.h"
 #include <imgui_impl_metal.h>
 #include <imgui_impl_sdl2.h>
-#include "graphic/Fast3D/bgfx/imgui_impl_bgfx.h"
-#include "Fast3D/Fast3dWindow.h"
 
 #else
 #include <SDL2/SDL_hints.h>
@@ -49,6 +50,7 @@
 #include <graphic/Fast3D/gfx_direct3d11.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
+#include <Fast3D/bgfx/imgui_impl_bgfx.h>
 
 // NOLINTNEXTLINE
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -156,8 +158,6 @@ void Gui::Init(GuiWindowInitData windowImpl) {
     CVarClear(CVAR_NEW_FILE_DROPPED);
     CVarClear(CVAR_DROPPED_FILE);
 }
-
-#define BX_PLATFORM_OSX 1
 
 void Gui::ImGuiWMInit() {
     switch (Context::GetInstance()->GetWindow()->GetWindowBackend()) {

@@ -328,6 +328,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     bool use_metal = false;
 #else
     bool use_opengl = true;
+    bool use_metal = false;
 #endif
 
     if (use_opengl) {
@@ -376,6 +377,8 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     if (use_metal) {
         flags = flags | SDL_WINDOW_METAL;
     }
+
+    SDL_SetHint(SDL_HINT_VIDEO_EXTERNAL_CONTEXT, "1");
 
     wnd = SDL_CreateWindow(title, posX, posY, window_width, window_height, flags);
 #ifdef _WIN32

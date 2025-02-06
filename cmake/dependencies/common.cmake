@@ -115,7 +115,7 @@ set(BGFX_CONFIG_MULTITHREADED OFF)
 FetchContent_Declare(
 	bgfx
 	GIT_REPOSITORY https://github.com/bkaradzic/bgfx.cmake
-	GIT_TAG 701d84c2227e9219ad44c760e75c3c6f24a2cff0
+	GIT_TAG GIT_TAG cf79284dad04727eb56cbdbd81e641627484fa09
 )
 FetchContent_MakeAvailable(bgfx)
 
