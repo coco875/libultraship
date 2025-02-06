@@ -7,8 +7,8 @@
 namespace Ship {
 KeyboardKeyToButtonMapping::KeyboardKeyToButtonMapping(uint8_t portIndex, CONTROLLERBUTTONS_T bitmask,
                                                        KbScancode scancode)
-    : ControllerInputMapping(ShipDeviceIndex::Keyboard), KeyboardKeyToAnyMapping(scancode),
-      ControllerButtonMapping(ShipDeviceIndex::Keyboard, portIndex, bitmask) {
+    : ControllerInputMapping(PhysicalDeviceType::Keyboard), KeyboardKeyToAnyMapping(scancode),
+      ControllerButtonMapping(PhysicalDeviceType::Keyboard, portIndex, bitmask) {
 }
 
 void KeyboardKeyToButtonMapping::UpdatePad(CONTROLLERBUTTONS_T& padButtons) {
@@ -23,7 +23,7 @@ void KeyboardKeyToButtonMapping::UpdatePad(CONTROLLERBUTTONS_T& padButtons) {
     padButtons |= mBitmask;
 }
 
-uint8_t KeyboardKeyToButtonMapping::GetMappingType() {
+int8_t KeyboardKeyToButtonMapping::GetMappingType() {
     return MAPPING_TYPE_KEYBOARD;
 }
 

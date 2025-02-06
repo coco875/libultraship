@@ -6,7 +6,6 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include "install_config.h"
 #include "graphic/Fast3D/debug/GfxDebugger.h"
-#include "graphic/Fast3D/Fast3dWindow.h"
 
 #ifdef _WIN32
 #include <tchar.h>
@@ -14,6 +13,8 @@
 
 #ifdef __APPLE__
 #include "utils/AppleFolderManager.h"
+#include <unistd.h>
+#include <pwd.h>
 #endif
 
 namespace Ship {
@@ -40,16 +41,20 @@ Context::~Context() {
     spdlog::shutdown();
 }
 
-std::shared_ptr<Context> Context::CreateInstance(const std::string name, const std::string shortName,
-                                                 const std::string configFilePath,
-                                                 const std::vector<std::string>& otrFiles,
-                                                 const std::unordered_set<uint32_t>& validHashes,
-                                                 uint32_t reservedThreadCount, AudioSettings audioSettings) {
+std::shared_ptr<Context>
+Context::CreateInstance(const std::string name, const std::string shortName, const std::string configFilePath,
+                        const std::vector<std::string>& archivePaths, const std::unordered_set<uint32_t>& validHashes,
+                        uint32_t reservedThreadCount, AudioSettings audioSettings, std::shared_ptr<Window> window,
+                        std::shared_ptr<ControlDeck> controlDeck) {
     if (mContext.expired()) {
         auto shared = std::make_shared<Context>(name, shortName, configFilePath);
         mContext = shared;
-        shared->Init(otrFiles, validHashes, reservedThreadCount, audioSettings);
-        return shared;
+        if (shared->Init(archivePaths, validHashes, reservedThreadCount, audioSettings, window, controlDeck)) {
+            return shared;
+        } else {
+            SPDLOG_ERROR("Failed to initialize");
+            return nullptr;
+        };
     }
 
     SPDLOG_DEBUG("Trying to create a context when it already exists. Returning existing.");
@@ -74,23 +79,17 @@ Context::Context(std::string name, std::string shortName, std::string configFile
     : mConfigFilePath(std::move(configFilePath)), mName(std::move(name)), mShortName(std::move(shortName)) {
 }
 
-void Context::Init(const std::vector<std::string>& otrFiles, const std::unordered_set<uint32_t>& validHashes,
-                   uint32_t reservedThreadCount, AudioSettings audioSettings) {
-    InitLogging();
-    InitConfiguration();
-    InitConsoleVariables();
-    InitResourceManager(otrFiles, validHashes, reservedThreadCount);
-    InitControlDeck();
-    InitCrashHandler();
-    InitConsole();
-    InitWindow();
-    InitAudio(audioSettings);
-    InitGfxDebugger();
+bool Context::Init(const std::vector<std::string>& archivePaths, const std::unordered_set<uint32_t>& validHashes,
+                   uint32_t reservedThreadCount, AudioSettings audioSettings, std::shared_ptr<Window> window,
+                   std::shared_ptr<ControlDeck> controlDeck) {
+    return InitLogging() && InitConfiguration() && InitConsoleVariables() &&
+           InitResourceManager(archivePaths, validHashes, reservedThreadCount) && InitControlDeck(controlDeck) &&
+           InitCrashHandler() && InitConsole() && InitWindow(window) && InitAudio(audioSettings) && InitGfxDebugger();
 }
 
-void Context::InitLogging() {
+bool Context::InitLogging() {
     if (GetLogger() != nullptr) {
-        return;
+        return true;
     }
 
     try {
@@ -160,34 +159,52 @@ void Context::InitLogging() {
 
         spdlog::register_logger(GetLogger());
         spdlog::set_default_logger(GetLogger());
-    } catch (const spdlog::spdlog_ex& ex) { std::cout << "Log initialization failed: " << ex.what() << std::endl; }
+        return true;
+    } catch (const spdlog::spdlog_ex& ex) {
+        std::cout << "Log initialization failed: " << ex.what() << std::endl;
+        return false;
+    }
 }
 
-void Context::InitConfiguration() {
+bool Context::InitConfiguration() {
     if (GetConfig() != nullptr) {
-        return;
+        return true;
     }
 
-    mConfig = std::make_shared<Config>(GetPathRelativeToAppDirectory(GetConfigFilePath()));
+    mConfig = std::make_shared<Config>(GetPathRelativeToAppDirectory(mConfigFilePath));
+
+    if (GetConfig() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize config");
+        return false;
+    }
+
+    return true;
 }
 
-void Context::InitConsoleVariables() {
+bool Context::InitConsoleVariables() {
     if (GetConsoleVariables() != nullptr) {
-        return;
+        return true;
     }
 
     mConsoleVariables = std::make_shared<ConsoleVariable>();
+
+    if (GetConsoleVariables() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize console variables");
+        return false;
+    }
+
+    return true;
 }
 
-void Context::InitResourceManager(const std::vector<std::string>& otrFiles,
+bool Context::InitResourceManager(const std::vector<std::string>& archivePaths,
                                   const std::unordered_set<uint32_t>& validHashes, uint32_t reservedThreadCount) {
     if (GetResourceManager() != nullptr) {
-        return;
+        return true;
     }
 
     mMainPath = GetConfig()->GetString("Game.Main Archive", GetAppDirectoryPath());
     mPatchesPath = GetConfig()->GetString("Game.Patches Archive", GetAppDirectoryPath() + "/mods");
-    if (otrFiles.empty()) {
+    if (archivePaths.empty()) {
         std::vector<std::string> paths = std::vector<std::string>();
         paths.push_back(mMainPath);
         paths.push_back(mPatchesPath);
@@ -196,10 +213,10 @@ void Context::InitResourceManager(const std::vector<std::string>& otrFiles,
         GetResourceManager()->Init(paths, validHashes, reservedThreadCount);
     } else {
         mResourceManager = std::make_shared<ResourceManager>();
-        GetResourceManager()->Init(otrFiles, validHashes, reservedThreadCount);
+        GetResourceManager()->Init(archivePaths, validHashes, reservedThreadCount);
     }
 
-    if (!GetResourceManager()->DidLoadSuccessfully()) {
+    if (!GetResourceManager()->IsLoaded()) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "OTR file not found",
                                  "Main OTR file not found. Please generate one", nullptr);
         SPDLOG_ERROR("Main OTR file not found!");
@@ -207,59 +224,105 @@ void Context::InitResourceManager(const std::vector<std::string>& otrFiles,
         // We need this exit to close the app when we dismiss the dialog
         exit(0);
 #endif
-        return;
+        return false;
     }
+
+    return true;
 }
 
-void Context::InitControlDeck(std::vector<CONTROLLERBUTTONS_T> additionalBitmasks) {
+bool Context::InitControlDeck(std::shared_ptr<ControlDeck> controlDeck) {
     if (GetControlDeck() != nullptr) {
-        return;
+        return true;
     }
 
-    mControlDeck = std::make_shared<ControlDeck>(additionalBitmasks);
+    mControlDeck = controlDeck;
+
+    if (GetControlDeck() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize control deck");
+        return false;
+    }
+
+    return true;
 }
 
-void Context::InitCrashHandler() {
+bool Context::InitCrashHandler() {
     if (GetCrashHandler() != nullptr) {
-        return;
+        return true;
     }
 
     mCrashHandler = std::make_shared<CrashHandler>();
+
+    if (GetCrashHandler() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize crash handler");
+        return false;
+    }
+
+    return true;
 }
 
-void Context::InitAudio(AudioSettings settings) {
+bool Context::InitAudio(AudioSettings settings) {
     if (GetAudio() != nullptr) {
-        return;
+        return true;
     }
 
     mAudio = std::make_shared<Audio>(settings);
+
+    if (GetAudio() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize audio");
+        return false;
+    }
+
     GetAudio()->Init();
+    return true;
 }
 
-void Context::InitGfxDebugger() {
+bool Context::InitGfxDebugger() {
     if (GetGfxDebugger() != nullptr) {
-        return;
+        return true;
     }
 
     mGfxDebugger = std::make_shared<Fast::GfxDebugger>();
+
+    if (GetGfxDebugger() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize gfx debugger");
+        return false;
+    }
+
+    return true;
 }
 
-void Context::InitConsole() {
+bool Context::InitConsole() {
     if (GetConsole() != nullptr) {
-        return;
+        return true;
     }
 
     mConsole = std::make_shared<Console>();
-    GetConsole()->Init();
-}
 
-void Context::InitWindow(std::vector<std::shared_ptr<GuiWindow>> guiWindows) {
-    if (GetWindow() != nullptr) {
-        return;
+    if (GetConsole() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize console");
+        return false;
     }
 
-    mWindow = std::make_shared<Fast::Fast3dWindow>(guiWindows);
+    GetConsole()->Init();
+
+    return true;
+}
+
+bool Context::InitWindow(std::shared_ptr<Window> window) {
+    if (GetWindow() != nullptr) {
+        return true;
+    }
+
+    mWindow = window;
+
+    if (GetWindow() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize window");
+        return false;
+    }
+
     GetWindow()->Init();
+
+    return true;
 }
 
 std::shared_ptr<ConsoleVariable> Context::GetConsoleVariables() {
@@ -302,10 +365,6 @@ std::shared_ptr<Fast::GfxDebugger> Context::GetGfxDebugger() {
     return mGfxDebugger;
 }
 
-std::string Context::GetConfigFilePath() {
-    return mConfigFilePath;
-}
-
 std::string Context::GetName() {
     return mName;
 }
@@ -342,7 +401,7 @@ std::string Context::GetAppBundlePath() {
         progpath.resize(len);
 
         // Find the last '/' and remove everything after it
-        int lastSlash = progpath.find_last_of("/");
+        long unsigned int lastSlash = progpath.find_last_of("/");
         if (lastSlash != std::string::npos) {
             progpath.erase(lastSlash);
         }
@@ -368,7 +427,17 @@ std::string Context::GetAppDirectoryPath(std::string appName) {
     return std::string(home) + "/Documents";
 #endif
 
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__APPLE__)
+    if (char* fpath = std::getenv("SHIP_HOME")) {
+        if (fpath[0] == '~') {
+            const char* home = getenv("HOME") ? getenv("HOME") : getpwuid(getuid())->pw_dir;
+            return std::string(home) + std::string(fpath).substr(1);
+        }
+        return std::string(fpath);
+    }
+#endif
+
+#if defined(__linux__)
     char* fpath = std::getenv("SHIP_HOME");
     if (fpath != NULL) {
         return std::string(fpath);

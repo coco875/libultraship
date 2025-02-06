@@ -33,7 +33,6 @@
 
 #include "log/luslog.h"
 #include "window/gui/Gui.h"
-#include "resource/GameVersions.h"
 #include "resource/ResourceManager.h"
 #include "utils/Utils.h"
 #include "Context.h"
@@ -114,8 +113,6 @@ static int game_framebuffer_msaa_resolved;
 
 uint32_t gfx_msaa_level = 1;
 
-static bool dropped_frame;
-
 static const std::unordered_map<Mtx*, MtxF>* current_mtx_replacements;
 
 static float buf_vbo[MAX_BUFFERED * (32 * 3)]; // 3 vertices in a triangle and 32 floats per vtx
@@ -166,10 +163,12 @@ const static std::unordered_map<Attribute, std::any> f3dexAttrHandler = { { MTX_
                                                                           { CULL_BOTH, F3DEX_G_CULL_BOTH } };
 
 static constexpr std::array ucode_attr_handlers = {
-    &f3dexAttrHandler,
-    &f3dexAttrHandler,
-    &f3dex2AttrHandler,
-    &f3dex2AttrHandler,
+    &f3dexAttrHandler,  // ucode_f3db
+    &f3dexAttrHandler,  // ucode_f3d
+    &f3dexAttrHandler,  // ucode_f3dex
+    &f3dexAttrHandler,  // ucode_f3exb
+    &f3dex2AttrHandler, // ucode_f3ex2
+    &f3dex2AttrHandler, // ucode_s2dex
 };
 
 template <typename T> static constexpr T get_attr(Attribute attr) {
@@ -181,7 +180,7 @@ template <typename T> static constexpr T get_attr(Attribute attr) {
 static std::string GetPathWithoutFileName(char* filePath) {
     size_t len = strlen(filePath);
 
-    for (size_t i = len - 1; i >= 0; i--) {
+    for (size_t i = len - 1; (long)i >= 0; i--) {
         if (filePath[i] == '/' || filePath[i] == '\\') {
             return std::string(filePath).substr(0, i);
         }
@@ -190,7 +189,7 @@ static std::string GetPathWithoutFileName(char* filePath) {
     return filePath;
 }
 
-static void gfx_flush(void) {
+static void gfx_flush() {
     if (buf_vbo_len > 0) {
         gfx_rapi->draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
         buf_vbo_len = 0;
@@ -559,14 +558,14 @@ static void import_texture_rgba16(int tile, bool importReplacement) {
     uint32_t full_image_line_size_bytes =
         g_rdp.loaded_texture[g_rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
     uint32_t line_size_bytes = g_rdp.loaded_texture[g_rdp.texture_tile[tile].tmem_index].line_size_bytes;
-    // SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
     uint32_t width = g_rdp.texture_tile[tile].line_size_bytes / 2;
     uint32_t height = size_bytes / g_rdp.texture_tile[tile].line_size_bytes;
 
     // A single line of pixels should not equal the entire image (height == 1 non-withstanding)
-    if (full_image_line_size_bytes == size_bytes)
+    if (full_image_line_size_bytes == size_bytes) {
         full_image_line_size_bytes = width * 2;
+    }
 
     uint32_t i = 0;
 
@@ -684,22 +683,34 @@ static void import_texture_ia16(int tile, bool importReplacement) {
     uint32_t full_image_line_size_bytes =
         g_rdp.loaded_texture[g_rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
     uint32_t line_size_bytes = g_rdp.loaded_texture[g_rdp.texture_tile[tile].tmem_index].line_size_bytes;
-    SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
-
-    for (uint32_t i = 0; i < size_bytes / 2; i++) {
-        uint8_t intensity = addr[2 * i];
-        uint8_t alpha = addr[2 * i + 1];
-        uint8_t r = intensity;
-        uint8_t g = intensity;
-        uint8_t b = intensity;
-        tex_upload_buffer[4 * i + 0] = r;
-        tex_upload_buffer[4 * i + 1] = g;
-        tex_upload_buffer[4 * i + 2] = b;
-        tex_upload_buffer[4 * i + 3] = alpha;
-    }
 
     uint32_t width = g_rdp.texture_tile[tile].line_size_bytes / 2;
     uint32_t height = size_bytes / g_rdp.texture_tile[tile].line_size_bytes;
+
+    // A single line of pixels should not equal the entire image (height == 1 non-withstanding)
+    if (full_image_line_size_bytes == size_bytes) {
+        full_image_line_size_bytes = width * 2;
+    }
+
+    uint32_t i = 0;
+
+    for (uint32_t y = 0; y < height; y++) {
+        for (uint32_t x = 0; x < width; x++) {
+            uint32_t clrIdx = (y * (full_image_line_size_bytes / 2)) + (x);
+
+            uint8_t intensity = addr[2 * clrIdx];
+            uint8_t alpha = addr[2 * clrIdx + 1];
+            uint8_t r = intensity;
+            uint8_t g = intensity;
+            uint8_t b = intensity;
+            tex_upload_buffer[4 * i + 0] = r;
+            tex_upload_buffer[4 * i + 1] = g;
+            tex_upload_buffer[4 * i + 2] = b;
+            tex_upload_buffer[4 * i + 3] = alpha;
+
+            i++;
+        }
+    }
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
 }
@@ -715,24 +726,36 @@ static void import_texture_i4(int tile, bool importReplacement) {
     uint32_t full_image_line_size_bytes =
         g_rdp.loaded_texture[g_rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
     uint32_t line_size_bytes = g_rdp.loaded_texture[g_rdp.texture_tile[tile].tmem_index].line_size_bytes;
-    // SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
-
-    for (uint32_t i = 0; i < size_bytes * 2; i++) {
-        uint8_t byte = addr[i / 2];
-        uint8_t part = (byte >> (4 - (i % 2) * 4)) & 0xf;
-        uint8_t intensity = part;
-        uint8_t r = intensity;
-        uint8_t g = intensity;
-        uint8_t b = intensity;
-        uint8_t a = intensity;
-        tex_upload_buffer[4 * i + 0] = SCALE_4_8(r);
-        tex_upload_buffer[4 * i + 1] = SCALE_4_8(g);
-        tex_upload_buffer[4 * i + 2] = SCALE_4_8(b);
-        tex_upload_buffer[4 * i + 3] = SCALE_4_8(a);
-    }
 
     uint32_t width = g_rdp.texture_tile[tile].line_size_bytes * 2;
     uint32_t height = size_bytes / g_rdp.texture_tile[tile].line_size_bytes;
+
+    // A single line of pixels should not equal the entire image (height == 1 non-withstanding)
+    if (full_image_line_size_bytes == size_bytes) {
+        full_image_line_size_bytes = width / 2;
+    }
+
+    uint32_t i = 0;
+
+    for (uint32_t y = 0; y < height; y++) {
+        for (uint32_t x = 0; x < width; x++) {
+            uint32_t clrIdx = (y * (full_image_line_size_bytes * 2)) + (x);
+
+            uint8_t byte = addr[clrIdx / 2];
+            uint8_t part = (byte >> (4 - (clrIdx % 2) * 4)) & 0xf;
+            uint8_t intensity = part;
+            uint8_t r = intensity;
+            uint8_t g = intensity;
+            uint8_t b = intensity;
+            uint8_t a = intensity;
+            tex_upload_buffer[4 * i + 0] = SCALE_4_8(r);
+            tex_upload_buffer[4 * i + 1] = SCALE_4_8(g);
+            tex_upload_buffer[4 * i + 2] = SCALE_4_8(b);
+            tex_upload_buffer[4 * i + 3] = SCALE_4_8(a);
+
+            i++;
+        }
+    }
 
     gfx_rapi->upload_texture(tex_upload_buffer, width, height);
 }
@@ -748,7 +771,6 @@ static void import_texture_i8(int tile, bool importReplacement) {
     uint32_t full_image_line_size_bytes =
         g_rdp.loaded_texture[g_rdp.texture_tile[tile].tmem_index].full_image_line_size_bytes;
     uint32_t line_size_bytes = g_rdp.loaded_texture[g_rdp.texture_tile[tile].tmem_index].line_size_bytes;
-    // SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
     for (uint32_t i = 0; i < size_bytes; i++) {
         uint8_t intensity = addr[i];
@@ -865,15 +887,15 @@ static void import_texture_raw(int tile, bool importReplacement) {
 
     uint16_t width = metadata->width;
     uint16_t height = metadata->height;
-    LUS::TextureType type = metadata->type;
-    std::shared_ptr<LUS::Texture> resource = metadata->resource;
+    Fast::TextureType type = metadata->type;
+    std::shared_ptr<Fast::Texture> resource = metadata->resource;
 
     // if texture type is CI4 or CI8 we need to apply tlut to it
     switch (type) {
-        case LUS::TextureType::Palette4bpp:
+        case Fast::TextureType::Palette4bpp:
             import_texture_ci4(tile, importReplacement);
             return;
-        case LUS::TextureType::Palette8bpp:
+        case Fast::TextureType::Palette8bpp:
             import_texture_ci8(tile, importReplacement);
             return;
         default:
@@ -1207,7 +1229,7 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const F3DVtx* ve
         float w = v->ob[0] * g_rsp.MP_matrix[0][3] + v->ob[1] * g_rsp.MP_matrix[1][3] +
                   v->ob[2] * g_rsp.MP_matrix[2][3] + g_rsp.MP_matrix[3][3];
 
-        float world_pos[3];
+        float world_pos[3] = { 0.0 };
         if (g_rsp.geometry_mode & G_LIGHTING_POSITIONAL) {
             float(*mtx)[4] = g_rsp.modelview_matrix_stack[g_rsp.modelview_matrix_stack_size - 1];
             world_pos[0] = v->ob[0] * mtx[0][0] + v->ob[1] * mtx[1][0] + v->ob[2] * mtx[2][0] + mtx[3][0];
@@ -1313,8 +1335,8 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const F3DVtx* ve
                     doty = (2.906921f * doty * doty + 1.36114f) * doty;
                     dotx = (dotx + 1.0f) / 4.0f;
                     doty = (doty + 1.0f) / 4.0f;*/
-                    dotx = acosf(-dotx) /* M_PI */ / 4.0f;
-                    doty = acosf(-doty) /* M_PI */ / 4.0f;
+                    dotx = acosf(-dotx) /* M_PI */ * 0.159155f;
+                    doty = acosf(-doty) /* M_PI */ * 0.159155f;
                 } else {
                     dotx = (dotx + 1.0f) / 4.0f;
                     doty = (doty + 1.0f) / 4.0f;
@@ -1485,6 +1507,10 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
     bool use_grayscale = g_rdp.grayscale;
 
     if (texture_edge) {
+        if (use_alpha) {
+            alpha_threshold = true;
+            texture_edge = false;
+        }
         use_alpha = true;
     }
 
@@ -1594,6 +1620,10 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
             if ((cmt & G_TX_CLAMP) && ((cmt & G_TX_MIRROR) || tex_height1 != tex_height2[i])) {
                 tm |= 1 << 2 * i + 1;
                 cmt &= ~G_TX_CLAMP;
+            }
+
+            if (rendering_state.textures[i] == nullptr) {
+                continue;
             }
 
             bool linear_filter = (g_rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) != G_TF_POINT;
@@ -2523,7 +2553,7 @@ static void gfx_s2dex_bg_copy(F3DuObjBg* bg) {
     RawTexMetadata rawTexMetadata = {};
 
     if ((bool)gfx_check_image_signature((char*)data)) {
-        std::shared_ptr<LUS::Texture> tex = std::static_pointer_cast<LUS::Texture>(
+        std::shared_ptr<Fast::Texture> tex = std::static_pointer_cast<Fast::Texture>(
             Ship::Context::GetInstance()->GetResourceManager()->LoadResourceProcess((char*)data));
         texFlags = tex->Flags;
         rawTexMetadata.width = tex->Width;
@@ -2562,7 +2592,7 @@ static void gfx_s2dex_bg_1cyc(F3DuObjBg* bg) {
     RawTexMetadata rawTexMetadata = {};
 
     if ((bool)gfx_check_image_signature((char*)data)) {
-        std::shared_ptr<LUS::Texture> tex = std::static_pointer_cast<LUS::Texture>(
+        std::shared_ptr<Fast::Texture> tex = std::static_pointer_cast<Fast::Texture>(
             Ship::Context::GetInstance()->GetResourceManager()->LoadResourceProcess((char*)data));
         texFlags = tex->Flags;
         rawTexMetadata.width = tex->Width;
@@ -2600,7 +2630,7 @@ static void gfx_s2dex_bg_1cyc(F3DuObjBg* bg) {
 
 static void gfx_s2dex_rect_copy(F3DuObjSprite* spr) {
     s16 dsdx = 4 << 10;
-    s16 uls = spr->s.objX << 3;
+    [[maybe_unused]] s16 uls = spr->s.objX << 3;
     // Flip flag only flips horizontally
     if (spr->s.imageFlags == G_BG_FLAG_FLIPS) {
         dsdx = -dsdx;
@@ -2709,12 +2739,6 @@ void gfx_copy_framebuffer(int fb_dst_id, int fb_src_id, bool copyOnce, bool* has
 // double pointer because we sometimes need to increment and decrement the underlying pointer Returns false if the
 // current opcode should be incremented after the handler ends.
 typedef bool (*GfxOpcodeHandlerFunc)(F3DGfx** gfx);
-
-bool gfx_load_ucode_handler_f3dex2(F3DGfx** cmd) {
-    g_rsp.fog_mul = 0;
-    g_rsp.fog_offset = 0;
-    return false;
-}
 
 bool gfx_cull_dl_handler_f3dex2(F3DGfx** cmd) {
     // TODO:
@@ -2892,7 +2916,7 @@ bool gfx_movemem_handler_otr(F3DGfx** cmd0) {
     if (ucode_handler_index == ucode_f3dex2) {
         gfx_sp_movemem_f3dex2(index, offset, ResourceGetDataByCrc(hash));
     } else {
-        auto light = (LUS::LightEntry*)ResourceGetDataByCrc(hash);
+        auto light = (Fast::LightEntry*)ResourceGetDataByCrc(hash);
         uintptr_t data = (uintptr_t)&light->Ambient;
         gfx_sp_movemem_f3d(index, offset, (void*)(data + (hasOffset == 1 ? 0x8 : 0)));
     }
@@ -3271,7 +3295,7 @@ bool gfx_set_timg_handler_rdp(F3DGfx** cmd0) {
 
     if ((i & 1) != 1) {
         if (gfx_check_image_signature(imgData) == 1) {
-            std::shared_ptr<LUS::Texture> tex = std::static_pointer_cast<LUS::Texture>(
+            std::shared_ptr<Fast::Texture> tex = std::static_pointer_cast<Fast::Texture>(
                 Ship::Context::GetInstance()->GetResourceManager()->LoadResourceProcess(imgData));
 
             if (tex == nullptr) {
@@ -3309,7 +3333,7 @@ bool gfx_set_timg_otr_hash_handler_custom(F3DGfx** cmd0) {
         return false;
     }
 
-    std::shared_ptr<LUS::Texture> texture = std::static_pointer_cast<LUS::Texture>(
+    std::shared_ptr<Fast::Texture> texture = std::static_pointer_cast<Fast::Texture>(
         Ship::Context::GetInstance()->GetResourceManager()->LoadResourceProcess(ResourceGetNameByCrc(hash)));
     if (texture != nullptr) {
         texFlags = texture->Flags;
@@ -3372,7 +3396,7 @@ bool gfx_set_timg_otr_filepath_handler_custom(F3DGfx** cmd0) {
     uint32_t texFlags = 0;
     RawTexMetadata rawTexMetadata = {};
 
-    std::shared_ptr<LUS::Texture> texture = std::static_pointer_cast<LUS::Texture>(
+    std::shared_ptr<Fast::Texture> texture = std::static_pointer_cast<Fast::Texture>(
         Ship::Context::GetInstance()->GetResourceManager()->LoadResourceProcess(fileName));
     if (texture != nullptr) {
         texFlags = texture->Flags;
@@ -3413,7 +3437,8 @@ bool gfx_set_fb_handler_custom(F3DGfx** cmd0) {
 
 bool gfx_reset_fb_handler_custom(F3DGfx** cmd0) {
     gfx_flush();
-    fbActive = 0;
+    fbActive = false;
+    active_fb = framebuffers.end();
     gfx_rapi->start_draw_to_framebuffer(game_renders_to_framebuffer ? game_framebuffer : 0,
                                         (float)gfx_current_dimensions.height / gfx_native_dimensions.height);
     // Force viewport and scissor to reapply against the main framebuffer, in case a previous smaller
@@ -3436,7 +3461,8 @@ bool gfx_copy_fb_handler_custom(F3DGfx** cmd0) {
 bool gfx_read_fb_handler_custom(F3DGfx** cmd0) {
     F3DGfx* cmd = *cmd0;
 
-    int32_t width, height, ulx, uly;
+    int32_t width, height;
+    [[maybe_unused]] int32_t ulx, uly;
     uint16_t* rgba16Buffer = (uint16_t*)cmd->words.w1;
     int fbId = C0(0, 8);
     bool bswap = C0(8, 1);
@@ -3454,7 +3480,7 @@ bool gfx_read_fb_handler_custom(F3DGfx** cmd0) {
 #ifndef IS_BIGENDIAN
     // byteswap the output to BE
     if (bswap) {
-        for (size_t i = 0; i < width * height; i++) {
+        for (size_t i = 0; i < (size_t)width * height; i++) {
             rgba16Buffer[i] = BE16SWAP(rgba16Buffer[i]);
         }
     }
@@ -3923,10 +3949,12 @@ static constexpr UcodeHandler s2dexHandlers = {
 };
 
 static constexpr std::array ucode_handlers = {
-    &f3dHandlers,
-    &f3dexHandlers,
-    &f3dex2Handlers,
-    &s2dexHandlers,
+    &f3dHandlers,    // ucode_f3db
+    &f3dHandlers,    // ucode_f3d
+    &f3dexHandlers,  // ucode_f3dex
+    &f3dexHandlers,  // ucode_f3dexb
+    &f3dex2Handlers, // ucode_f3dex2
+    &s2dexHandlers,  // ucode_s2dex
 };
 
 const char* GfxGetOpcodeName(int8_t opcode) {
@@ -3958,12 +3986,39 @@ static void gfx_set_ucode_handler(UcodeHandlers ucode) {
     // Loaded ucode must be in range of the supported ucode_handlers
     assert(ucode < ucode_max);
     ucode_handler_index = ucode;
+
+    // Reset some RSP state values upon ucode load to deal with hardware quirks discovered by emulators
+    switch (ucode) {
+        case ucode_f3d:
+        case ucode_f3db:
+        case ucode_f3dex:
+        case ucode_f3dexb:
+        case ucode_f3dex2:
+            g_rsp.fog_mul = 0;
+            g_rsp.fog_offset = 0;
+            break;
+        default:
+            break;
+    }
 }
 
 static void gfx_step() {
     auto& cmd = g_exec_stack.currCmd();
     auto cmd0 = cmd;
     int8_t opcode = (int8_t)(cmd->words.w0 >> 24);
+
+#ifdef USE_GBI_TRACE
+    if (cmd->words.trace.valid && CVarGetInteger("gEnableGFXTrace", 0)) {
+#define TRACE                                  \
+    "\n====================================\n" \
+    " - CMD: {:02X}\n"                         \
+    " - Path: {}:{}\n"                         \
+    " - W0: {:08X}\n"                          \
+    " - W1: {:08X}\n"                          \
+    "===================================="
+        SPDLOG_INFO(TRACE, (uint8_t)opcode, cmd->words.trace.file, cmd->words.trace.idx, cmd->words.w0, cmd->words.w1);
+    }
+#endif
 
     if (opcode == F3DEX2_G_LOAD_UCODE) {
         gfx_set_ucode_handler((UcodeHandlers)(cmd->words.w0 & 0xFFFFFF));
@@ -4000,6 +4055,14 @@ static void gfx_sp_reset() {
     g_rsp.modelview_matrix_stack_size = 1;
     g_rsp.current_num_lights = 2;
     g_rsp.lights_changed = true;
+    g_rsp.lookat[0].dir[0] = 0;
+    g_rsp.lookat[0].dir[1] = 127;
+    g_rsp.lookat[0].dir[2] = 0;
+    g_rsp.lookat[1].dir[0] = 127;
+    g_rsp.lookat[1].dir[1] = 0;
+    g_rsp.lookat[1].dir[2] = 0;
+    calculate_normal_dir(&g_rsp.lookat[0], g_rsp.current_lookat_coeffs[0]);
+    calculate_normal_dir(&g_rsp.lookat[1], g_rsp.current_lookat_coeffs[1]);
 }
 
 void gfx_get_dimensions(uint32_t* width, uint32_t* height, int32_t* posX, int32_t* posY) {
@@ -4042,7 +4105,7 @@ void gfx_init(struct GfxWindowManagerAPI* wapi, struct GfxRenderingAPI* rapi, co
     ucode_handler_index = UcodeHandlers::ucode_f3dex2;
 }
 
-void gfx_destroy(void) {
+void gfx_destroy() {
     // TODO: should also destroy rapi, and any other resources acquired in fast3d
     free(tex_upload_buffer);
     gfx_wapi->destroy();
@@ -4054,12 +4117,19 @@ void gfx_destroy(void) {
     g_rdp.loaded_texture[1].raw_tex_metadata.resource = nullptr;
 }
 
-struct GfxRenderingAPI* gfx_get_current_rendering_api(void) {
+struct GfxRenderingAPI* gfx_get_current_rendering_api() {
     return gfx_rapi;
 }
 
-void gfx_start_frame(void) {
+void gfx_handle_window_events() {
     gfx_wapi->handle_events();
+}
+
+bool gfx_is_frame_ready() {
+    return gfx_wapi->is_frame_ready();
+}
+
+void gfx_start_frame() {
     gfx_wapi->get_dimensions(&gfx_current_window_dimensions.width, &gfx_current_window_dimensions.height,
                              &gfx_current_window_position_x, &gfx_current_window_position_y);
     if (gfx_current_dimensions.height == 0) {
@@ -4120,19 +4190,9 @@ GfxExecStack g_exec_stack = {};
 
 void gfx_run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_replacements) {
     gfx_sp_reset();
-    Ship::Context::GetInstance()->GetWindow()->GetGui()->DrawMenu();
 
-    // puts("New frame");
     get_pixel_depth_pending.clear();
     get_pixel_depth_cached.clear();
-
-    if (!gfx_wapi->start_frame()) {
-        dropped_frame = true;
-        Ship::Context::GetInstance()->GetWindow()->GetGui()->StartFrame();
-        Ship::Context::GetInstance()->GetWindow()->GetGui()->EndFrame();
-        return;
-    }
-    dropped_frame = false;
 
     current_mtx_replacements = &mtx_replacements;
 
@@ -4142,7 +4202,7 @@ void gfx_run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_replacemen
     gfx_rapi->start_frame();
     gfx_rapi->start_draw_to_framebuffer(game_renders_to_framebuffer ? game_framebuffer : 0,
                                         (float)gfx_current_dimensions.height / gfx_native_dimensions.height);
-    gfx_rapi->clear_framebuffer();
+    gfx_rapi->clear_framebuffer(false, true);
     g_rdp.viewport_or_scissor_changed = true;
     rendering_state.viewport = {};
     rendering_state.scissor = {};
@@ -4175,7 +4235,7 @@ void gfx_run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_replacemen
 
     if (game_renders_to_framebuffer) {
         gfx_rapi->start_draw_to_framebuffer(0, 1);
-        gfx_rapi->clear_framebuffer();
+        gfx_rapi->clear_framebuffer(true, true);
 
         if (gfx_msaa_level > 1) {
             bool different_size = gfx_current_dimensions.width != gfx_current_game_window_viewport.width ||
@@ -4197,18 +4257,13 @@ void gfx_run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_replacemen
 
         assert(0 && "active framebuffer was never reset back to original");
     }
-
-    Ship::Context::GetInstance()->GetWindow()->GetGui()->StartFrame();
-    Ship::Context::GetInstance()->GetWindow()->GetGui()->RenderViewports();
-    gfx_rapi->end_frame();
-    gfx_wapi->swap_buffers_begin();
 }
 
-void gfx_end_frame(void) {
-    if (!dropped_frame) {
-        gfx_rapi->finish_render();
-        gfx_wapi->swap_buffers_end();
-    }
+void gfx_end_frame() {
+    gfx_rapi->end_frame();
+    gfx_wapi->swap_buffers_begin();
+    gfx_rapi->finish_render();
+    gfx_wapi->swap_buffers_end();
 }
 
 void gfx_set_target_ucode(UcodeHandlers ucode) {
@@ -4241,7 +4296,7 @@ extern "C" int gfx_create_framebuffer(uint32_t width, uint32_t height, uint32_t 
 
 void gfx_set_framebuffer(int fb, float noise_scale) {
     gfx_rapi->start_draw_to_framebuffer(fb, noise_scale);
-    gfx_rapi->clear_framebuffer();
+    gfx_rapi->clear_framebuffer(false, true);
 }
 
 void gfx_copy_framebuffer(int fb_dst_id, int fb_src_id, bool copyOnce, bool* hasCopiedPtr) {
@@ -4289,7 +4344,6 @@ void gfx_copy_framebuffer(int fb_dst_id, int fb_src_id, bool copyOnce, bool* has
 
 void gfx_reset_framebuffer() {
     gfx_rapi->start_draw_to_framebuffer(0, (float)gfx_current_dimensions.height / gfx_native_dimensions.height);
-    gfx_rapi->clear_framebuffer();
 }
 
 static void adjust_pixel_depth_coordinates(float& x, float& y) {
@@ -4353,10 +4407,10 @@ void gfx_register_blended_texture(const char* name, uint8_t* mask, uint8_t* repl
     }
 
     if (gfx_check_image_signature(reinterpret_cast<char*>(replacement))) {
-        LUS::Texture* tex = std::static_pointer_cast<LUS::Texture>(
-                                Ship::Context::GetInstance()->GetResourceManager()->LoadResourceProcess(
-                                    reinterpret_cast<char*>(replacement)))
-                                .get();
+        Fast::Texture* tex = std::static_pointer_cast<Fast::Texture>(
+                                 Ship::Context::GetInstance()->GetResourceManager()->LoadResourceProcess(
+                                     reinterpret_cast<char*>(replacement)))
+                                 .get();
 
         replacement = tex->ImageData;
     }

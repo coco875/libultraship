@@ -2,8 +2,9 @@
 #include "resource/type/DisplayList.h"
 #include "spdlog/spdlog.h"
 #include "libultraship/libultra/gbi.h"
+#include "graphic/Fast3D/lus_gbi.h"
 
-namespace LUS {
+namespace Fast {
 std::unordered_map<std::string, uint32_t> renderModes = {
     { "G_RM_ZB_OPA_SURF", G_RM_ZB_OPA_SURF },
     { "G_RM_AA_ZB_OPA_SURF", G_RM_AA_ZB_OPA_SURF },
@@ -133,6 +134,23 @@ uint32_t ResourceFactoryDisplayList::GetCombineLERPValue(const char* valStr) {
     return G_CCMUX_1;
 }
 
+int8_t GetEndOpcodeByUCode(UcodeHandlers ucode) {
+    switch (ucode) {
+        case ucode_f3d:
+        case ucode_f3db:
+        case ucode_f3dex:
+        case ucode_f3dexb:
+            return F3DEX_G_ENDDL;
+        case ucode_f3dex2:
+        case ucode_s2dex: {
+            return F3DEX2_G_ENDDL;
+        }
+        case ucode_max:
+            break;
+    }
+    return -1;
+}
+
 std::shared_ptr<Ship::IResource> ResourceFactoryBinaryDisplayListV0::ReadResource(std::shared_ptr<Ship::File> file) {
     if (!FileHasValidFormatAndReader(file)) {
         return nullptr;
@@ -140,30 +158,40 @@ std::shared_ptr<Ship::IResource> ResourceFactoryBinaryDisplayListV0::ReadResourc
 
     auto displayList = std::make_shared<DisplayList>(file->InitData);
     auto reader = std::get<std::shared_ptr<Ship::BinaryReader>>(file->Reader);
+    auto ucode = (UcodeHandlers)reader->ReadInt8();
+
+    displayList->UCode = ucode;
 
     while (reader->GetBaseAddress() % 8 != 0) {
         reader->ReadInt8();
     }
 
+    size_t idx = 0;
     while (true) {
         Gfx command;
         command.words.w0 = reader->ReadUInt32();
         command.words.w1 = reader->ReadUInt32();
 
-        displayList->Instructions.push_back(command);
-
         int8_t opcode = (int8_t)(command.words.w0 >> 24);
+        bool isExpanded = opcode == G_SETTIMG_OTR_HASH || opcode == G_DL_OTR_HASH || opcode == G_VTX_OTR_HASH ||
+                          opcode == G_BRANCH_Z_OTR || opcode == G_MARKER || opcode == G_MTX_OTR;
 
         // These are 128-bit commands, so read an extra 64 bits...
-        if (opcode == G_SETTIMG_OTR_HASH || opcode == G_DL_OTR_HASH || opcode == G_VTX_OTR_HASH ||
-            opcode == G_BRANCH_Z_OTR || opcode == G_MARKER || opcode == G_MTX_OTR || opcode == G_MOVEMEM_OTR) {
+        if (isExpanded) {
+            displayList->Instructions.push_back(command);
             command.words.w0 = reader->ReadUInt32();
             command.words.w1 = reader->ReadUInt32();
-
-            displayList->Instructions.push_back(command);
         }
 
-        if (opcode == (int8_t)G_ENDDL) {
+#ifdef USE_GBI_TRACE
+        command.words.trace.file = file->InitData->Path.c_str();
+        command.words.trace.idx = idx++;
+        command.words.trace.valid = true;
+#endif
+
+        displayList->Instructions.push_back(command);
+
+        if (opcode == GetEndOpcodeByUCode(ucode)) {
             break;
         }
     }
@@ -1089,6 +1117,14 @@ std::shared_ptr<Ship::IResource> ResourceFactoryXMLDisplayListV0::ReadResource(s
         child = child->NextSiblingElement();
     }
 
+#ifdef F3DEX_GBI_2
+    dl->UCode = ucode_f3dex2;
+#elif defined(F3DEX_GBI)
+    dl->UCode = ucode_f3dex;
+#elif defined(F3D_OLD)
+    dl->UCode = ucode_f3d;
+#endif
+
     return dl;
 }
-} // namespace LUS
+} // namespace Fast

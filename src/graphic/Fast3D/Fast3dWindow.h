@@ -3,6 +3,9 @@
 #include "graphic/Fast3D/gfx_window_manager_api.h"
 #include "graphic/Fast3D/gfx_rendering_api.h"
 #include "public/bridge/gfxbridge.h"
+#include "controller/controldevice/controller/mapping/keyboard/KeyboardScancodes.h"
+
+union Gfx;
 
 namespace Fast {
 class Fast3dWindow : public Ship::Window {
@@ -15,11 +18,20 @@ class Fast3dWindow : public Ship::Window {
     void Close() override;
     void StartFrame() override;
     void EndFrame() override;
+    bool IsFrameReady() override;
+    void HandleEvents() override;
     void SetCursorVisibility(bool visible) override;
     uint32_t GetWidth() override;
     uint32_t GetHeight() override;
     int32_t GetPosX() override;
     int32_t GetPosY() override;
+    void SetMousePos(Ship::Coords pos) override;
+    Ship::Coords GetMousePos() override;
+    Ship::Coords GetMouseDelta() override;
+    Ship::CoordsF GetMouseWheel() override;
+    bool GetMouseState(Ship::MouseBtn btn) override;
+    void SetMouseCapture(bool capture) override;
+    bool IsMouseCaptured() override;
     uint32_t GetCurrentRefreshRate() override;
     bool SupportsWindowedFullscreen() override;
     bool CanDisableVerticalSync() override;
@@ -39,11 +51,14 @@ class Fast3dWindow : public Ship::Window {
     void SetRendererUCode(UcodeHandlers ucode);
     void EnableSRGBMode();
     void* GetWindowPtr();
+    bool DrawAndRunGraphicsCommands(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtxReplacements);
 
   protected:
     static bool KeyDown(int32_t scancode);
     static bool KeyUp(int32_t scancode);
-    static void AllKeysUp(void);
+    static void AllKeysUp();
+    static bool MouseButtonDown(int button);
+    static bool MouseButtonUp(int button);
     static void OnFullscreenChanged(bool isNowFullscreen);
 
   private:

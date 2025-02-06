@@ -168,7 +168,7 @@ target_include_directories(libultraship
 
 #=================== Linking ===================
 if(NOT EXCLUDE_MPQ_SUPPORT)
-    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
         target_link_libraries(libultraship PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,storm>")
     else()
         target_link_libraries(libultraship PUBLIC storm)
@@ -320,7 +320,12 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU|Clang")
 		-Wno-parentheses
 		-Wno-narrowing
 		-Wno-missing-field-initializers
-        -Wno-implicit-function-declaration
+        $<$<COMPILE_LANGUAGE:C,OBJC>:-Wno-implicit-function-declaration>
         $<$<COMPILE_LANGUAGE:C,OBJC>:-Wno-int-conversion>
 	)
+    if (MSVC)
+    target_compile_options(libultraship PRIVATE
+        -Wno-implicit-function-declaration
+    )
+    endif()
 endif()
