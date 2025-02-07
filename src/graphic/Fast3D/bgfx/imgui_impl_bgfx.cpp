@@ -44,11 +44,9 @@ void ImGui_Implbgfx_RenderDrawLists(ImDrawData* draw_data)
         return;
     }
 
-    ImVec2 scale = {draw_data->DisplaySize.x /640, draw_data->DisplaySize.y / 480};
-
     bgfx::setViewClear(g_View, BGFX_CLEAR_COLOR);
 
-    draw_data->ScaleClipRects(draw_data->FramebufferScale/scale);
+    draw_data->ScaleClipRects(draw_data->FramebufferScale);
 
     // Setup render state: alpha-blending enabled, no face culling,
     // no depth testing, scissor enabled

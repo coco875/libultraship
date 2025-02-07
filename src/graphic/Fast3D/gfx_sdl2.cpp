@@ -36,6 +36,8 @@
 #include <SDL_syswm.h>
 #endif
 
+#include <bgfx/bgfx.h>
+
 #define GFX_BACKEND_NAME "SDL"
 #define _100NANOSECONDS_IN_SECOND 10000000
 
@@ -580,8 +582,10 @@ static void gfx_sdl_handle_single_event(SDL_Event& event) {
 #endif
         case SDL_WINDOWEVENT:
             switch (event.window.event) {
+                case SDL_WINDOWEVENT_RESIZED:
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                     SDL_GL_GetDrawableSize(wnd, &window_width, &window_height);
+                    bgfx::reset(window_width, window_height, BGFX_RESET_VSYNC);
                     break;
                 case SDL_WINDOWEVENT_CLOSE:
                     if (event.window.windowID == SDL_GetWindowID(wnd)) {

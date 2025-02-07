@@ -197,7 +197,7 @@ static void gfx_bgfx_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t 
 }
 
 static void gfx_bgfx_on_resize(void) {
-
+    bgfx::reset(Ship::Context::GetInstance()->GetWindow()->GetWidth(), Ship::Context::GetInstance()->GetWindow()->GetHeight(), BGFX_RESET_VSYNC);
 }
 
 static void gfx_bgfx_start_frame(void) {

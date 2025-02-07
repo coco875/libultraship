@@ -209,7 +209,7 @@ void Gui::ImGuiBackendInit() {
             break;
 #endif
         case WindowBackend::FAST3D_SDL_BGFX:
-            ImGui_Implbgfx_Init(255);
+            ImGui_Implbgfx_Init(0);
             break;
 #ifdef __APPLE__
         case WindowBackend::FAST3D_SDL_METAL:
