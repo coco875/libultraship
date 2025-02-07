@@ -18,7 +18,7 @@
 #include "window/gui/resource/GuiTextureFactory.h"
 #include "graphic/Fast3D/gfx_rendering_api.h"
 #include "graphic/Fast3D/bgfx/imgui_impl_bgfx.h"
-#include "Fast3D/Fast3dWindow.h"
+#include "graphic/Fast3D/Fast3dWindow.h"
 #include "bx/platform.h"
 
 #include "window/gui/GfxDebuggerWindow.h"
