@@ -20,10 +20,9 @@
 #include <bgfx/bgfx.h>
 #include <SDL_syswm.h>
 #include "Context.h"
+#include <brtshaderc.h>
 #include "imgui_impl_sdl2.h"
 #include "bx/platform.h"
-// #include "_deps/bgfx-src/bimg/include/bimg/bimg.h"
-// #include "_deps/bgfx-src/bgfx/examples/common/entry/entry.h"
 
 #include <vector>
 #include <algorithm>
@@ -126,6 +125,16 @@ static void gfx_bgfx_load_shader(struct ShaderProgram* new_prg) {
 }
 
 static struct ShaderProgram* gfx_bgfx_create_and_load_new_shader(uint64_t shader_id0, uint32_t shader_id1) {
+    // compile vertex shader, with default arguments.
+    const bgfx::Memory* memVsh =  shaderc::compileShader(shaderc::ST_VERTEX, "vs_cubes.sc");
+    bgfx::ShaderHandle vsh = bgfx::createShader(memVsh);
+
+    // compile fragment shader, with specific arguments for defines, varying def file, shader profile.
+    const bgfx::Memory* memFsh =  shaderc::compileShader(shaderc::ST_FRAGMENT, "fs_cubes.sc", "myDefines", "varying.def.sc", "ps_5_0");
+    bgfx::ShaderHandle fsh = bgfx::createShader(memFsh);
+
+    // build program using shaders
+    auto mProgram = bgfx::createProgram(vsh, fsh, true);
     return nullptr;
 }
 

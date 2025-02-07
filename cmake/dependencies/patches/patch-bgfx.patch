@@ -1,0 +1,1353 @@
+diff --git a/3rdparty/dear-imgui/imconfig.h b/3rdparty/dear-imgui/imconfig.h
+index bb52b2380..96015b595 100644
+--- a/3rdparty/dear-imgui/imconfig.h
++++ b/3rdparty/dear-imgui/imconfig.h
+@@ -6,8 +6,8 @@
+ 
+ #pragma once
+ 
+-#define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+-#define IMGUI_DISABLE_OBSOLETE_KEYIO
++//#define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
++//#define IMGUI_DISABLE_OBSOLETE_KEYIO
+ #define IMGUI_DISABLE_DEFAULT_ALLOCATORS
+ 
+ //---- Define your own ImVector<> type if you don't want to use the provided implementation defined in imgui.h
+diff --git a/examples/common/imgui/imgui.cpp b/examples/common/imgui/imgui.cpp
+index 82adcbbe5..89ae4c89a 100644
+--- a/examples/common/imgui/imgui.cpp
++++ b/examples/common/imgui/imgui.cpp
+@@ -8,8 +8,13 @@
+ #include <bx/allocator.h>
+ #include <bx/math.h>
+ #include <bx/timer.h>
++#if __has_include(<imgui.h>)
++#include <imgui.h>
++#include <imgui_internal.h>
++#else
+ #include <dear-imgui/imgui.h>
+ #include <dear-imgui/imgui_internal.h>
++#endif
+ 
+ #include "imgui.h"
+ #include "../bgfx_utils.h"
+diff --git a/examples/common/imgui/imgui.h b/examples/common/imgui/imgui.h
+index bd2aaef08..8f1978c3a 100644
+--- a/examples/common/imgui/imgui.h
++++ b/examples/common/imgui/imgui.h
+@@ -7,9 +7,18 @@
+ #define IMGUI_H_HEADER_GUARD
+ 
+ #include <bgfx/bgfx.h>
++#if __has_include(<imgui.h>)
++#include <imgui.h>
++#else
+ #include <dear-imgui/imgui.h>
++#endif
++
++#if __has_include(<iconfontheaders/icons_kenney.h>)
+ #include <iconfontheaders/icons_kenney.h>
++#endif
++#if __has_include(<iconfontheaders/icons_font_awesome.h>)
+ #include <iconfontheaders/icons_font_awesome.h>
++#endif
+ 
+ #define IMGUI_MBUT_LEFT   0x01
+ #define IMGUI_MBUT_RIGHT  0x02
+diff --git a/scripts/brtshaderc.lua b/scripts/brtshaderc.lua
+new file mode 100644
+index 000000000..ccee451ed
+--- /dev/null
++++ b/scripts/brtshaderc.lua
+@@ -0,0 +1,518 @@
++--
++-- Copyright 2010-2018 Branimir Karadzic. All rights reserved.
++-- License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
++--
++
++local GLSL_OPTIMIZER = path.join(BGFX_DIR, "3rdparty/glsl-optimizer")
++local FCPP_DIR = path.join(BGFX_DIR, "3rdparty/fcpp")
++local GLSLANG = path.join(BGFX_DIR, "3rdparty/glslang")
++local SPIRV_CROSS = path.join(BGFX_DIR, "3rdparty/spirv-cross")
++local SPIRV_HEADERS  = path.join(BGFX_DIR, "3rdparty/spirv-headers")
++local SPIRV_TOOLS = path.join(BGFX_DIR, "3rdparty/spirv-tools")
++local WEBGPU = path.join(BGFX_DIR, "3rdparty/webgpu")
++
++group "libs"
++
++project ("brtshaderc")
++	kind "StaticLib"
++
++    files {
++        path.join(BGFX_DIR, "tools/brtshaderc/brtshaderc.cpp"),
++    }
++
++    includedirs {
++        path.join(BGFX_DIR, "tools/brtshaderc"),
++    }
++
++-- project "webgpu"
++--     kind "StaticLib"
++
++    includedirs {
++        path.join(WEBGPU, "include"),
++    }
++
++-- project "spirv-opt"
++--     kind "StaticLib"
++
++    includedirs {
++        SPIRV_TOOLS,
++
++        path.join(SPIRV_TOOLS, "include"),
++        path.join(SPIRV_TOOLS, "include/generated"),
++        path.join(SPIRV_TOOLS, "source"),
++        path.join(SPIRV_HEADERS, "include"),
++    }
++
++    files {
++        path.join(SPIRV_TOOLS, "source/opt/**.cpp"),
++        path.join(SPIRV_TOOLS, "source/opt/**.h"),
++        path.join(SPIRV_TOOLS, "source/reduce/**.cpp"),
++        path.join(SPIRV_TOOLS, "source/reduce/**.h"),
++        path.join(SPIRV_TOOLS, "source/val/**.cpp"),
++        path.join(SPIRV_TOOLS, "source/val/**.h"),
++
++        -- libspirv
++        path.join(SPIRV_TOOLS, "source/assembly_grammar.cpp"),
++        path.join(SPIRV_TOOLS, "source/assembly_grammar.h"),
++        path.join(SPIRV_TOOLS, "source/binary.cpp"),
++        path.join(SPIRV_TOOLS, "source/binary.h"),
++        path.join(SPIRV_TOOLS, "source/cfa.h"),
++        path.join(SPIRV_TOOLS, "source/diagnostic.cpp"),
++        path.join(SPIRV_TOOLS, "source/diagnostic.h"),
++        path.join(SPIRV_TOOLS, "source/disassemble.cpp"),
++        path.join(SPIRV_TOOLS, "source/disassemble.h"),
++        path.join(SPIRV_TOOLS, "source/enum_set.h"),
++        path.join(SPIRV_TOOLS, "source/enum_string_mapping.cpp"),
++        path.join(SPIRV_TOOLS, "source/enum_string_mapping.h"),
++        path.join(SPIRV_TOOLS, "source/ext_inst.cpp"),
++        path.join(SPIRV_TOOLS, "source/ext_inst.h"),
++        path.join(SPIRV_TOOLS, "source/extensions.cpp"),
++        path.join(SPIRV_TOOLS, "source/extensions.h"),
++        path.join(SPIRV_TOOLS, "source/instruction.h"),
++        path.join(SPIRV_TOOLS, "source/latest_version_glsl_std_450_header.h"),
++        path.join(SPIRV_TOOLS, "source/latest_version_opencl_std_header.h"),
++        path.join(SPIRV_TOOLS, "source/latest_version_spirv_header.h"),
++        path.join(SPIRV_TOOLS, "source/libspirv.cpp"),
++        path.join(SPIRV_TOOLS, "source/macro.h"),
++        path.join(SPIRV_TOOLS, "source/name_mapper.cpp"),
++        path.join(SPIRV_TOOLS, "source/name_mapper.h"),
++        path.join(SPIRV_TOOLS, "source/opcode.cpp"),
++        path.join(SPIRV_TOOLS, "source/opcode.h"),
++        path.join(SPIRV_TOOLS, "source/operand.cpp"),
++        path.join(SPIRV_TOOLS, "source/operand.h"),
++        path.join(SPIRV_TOOLS, "source/parsed_operand.cpp"),
++        path.join(SPIRV_TOOLS, "source/parsed_operand.h"),
++        path.join(SPIRV_TOOLS, "source/print.cpp"),
++        path.join(SPIRV_TOOLS, "source/print.h"),
++        path.join(SPIRV_TOOLS, "source/software_version.cpp"),
++        path.join(SPIRV_TOOLS, "source/spirv_constant.h"),
++        path.join(SPIRV_TOOLS, "source/spirv_definition.h"),
++        path.join(SPIRV_TOOLS, "source/spirv_endian.cpp"),
++        path.join(SPIRV_TOOLS, "source/spirv_endian.h"),
++        path.join(SPIRV_TOOLS, "source/spirv_optimizer_options.cpp"),
++        path.join(SPIRV_TOOLS, "source/spirv_reducer_options.cpp"),
++        path.join(SPIRV_TOOLS, "source/spirv_target_env.cpp"),
++        path.join(SPIRV_TOOLS, "source/spirv_target_env.h"),
++        path.join(SPIRV_TOOLS, "source/spirv_validator_options.cpp"),
++        path.join(SPIRV_TOOLS, "source/spirv_validator_options.h"),
++        path.join(SPIRV_TOOLS, "source/table.cpp"),
++        path.join(SPIRV_TOOLS, "source/table.h"),
++        path.join(SPIRV_TOOLS, "source/text.cpp"),
++        path.join(SPIRV_TOOLS, "source/text.h"),
++        path.join(SPIRV_TOOLS, "source/text_handler.cpp"),
++        path.join(SPIRV_TOOLS, "source/text_handler.h"),
++        path.join(SPIRV_TOOLS, "source/util/bit_vector.cpp"),
++        path.join(SPIRV_TOOLS, "source/util/bit_vector.h"),
++        path.join(SPIRV_TOOLS, "source/util/bitutils.h"),
++        path.join(SPIRV_TOOLS, "source/util/hex_float.h"),
++        path.join(SPIRV_TOOLS, "source/util/parse_number.cpp"),
++        path.join(SPIRV_TOOLS, "source/util/parse_number.h"),
++        path.join(SPIRV_TOOLS, "source/util/string_utils.cpp"),
++        path.join(SPIRV_TOOLS, "source/util/string_utils.h"),
++        path.join(SPIRV_TOOLS, "source/util/timer.h"),
++    }
++
++    configuration { "vs*" }
++        buildoptions {
++            "/wd4127", -- warning C4127: conditional expression is constant
++            "/wd4267", -- warning C4267: 'argument': conversion from '' to '', possible loss of data
++            "/wd4389", -- warning C4389: '==': signed/unsigned mismatch
++            "/wd4702", -- warning C4702: unreachable code
++            "/wd4706", -- warning C4706: assignment within conditional expression
++        }
++
++    configuration { "mingw* or linux* or osx*" }
++        buildoptions {
++            "-Wno-switch",
++        }
++
++    configuration { "mingw* or linux-gcc-*" }
++        buildoptions {
++            "-Wno-misleading-indentation",
++        }
++
++    configuration {}
++
++-- project "spirv-cross"
++-- 	kind "StaticLib"
++
++	defines {
++		"SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS",
++	}
++
++	includedirs {
++        SPIRV_CROSS,
++		-- path.join(SPIRV_CROSS, "include/spirv_cross"),
++		path.join(SPIRV_CROSS, "include"),
++	}
++
++    files {
++        path.join(SPIRV_CROSS, "**.h"),
++        path.join(SPIRV_CROSS, "**.hpp"),
++        path.join(SPIRV_CROSS, "**.cpp"),
++        path.join(SPIRV_CROSS, "include/spirv_cross/**.hpp"),
++        path.join(SPIRV_CROSS, "include/spirv_cross/**.h"),
++    }
++
++    removefiles {
++        path.join(SPIRV_CROSS, "main.cpp"),
++    }
++
++	files {
++		path.join(SPIRV_CROSS, "spirv.hpp"),
++		path.join(SPIRV_CROSS, "spirv_cfg.cpp"),
++		path.join(SPIRV_CROSS, "spirv_cfg.hpp"),
++		path.join(SPIRV_CROSS, "spirv_common.hpp"),
++		path.join(SPIRV_CROSS, "spirv_cpp.cpp"),
++		path.join(SPIRV_CROSS, "spirv_cpp.hpp"),
++		path.join(SPIRV_CROSS, "spirv_cross.cpp"),
++		path.join(SPIRV_CROSS, "spirv_cross.hpp"),
++		path.join(SPIRV_CROSS, "spirv_cross_parsed_ir.cpp"),
++		path.join(SPIRV_CROSS, "spirv_cross_parsed_ir.hpp"),
++		path.join(SPIRV_CROSS, "spirv_cross_util.cpp"),
++		path.join(SPIRV_CROSS, "spirv_cross_util.hpp"),
++		path.join(SPIRV_CROSS, "spirv_glsl.cpp"),
++		path.join(SPIRV_CROSS, "spirv_glsl.hpp"),
++		path.join(SPIRV_CROSS, "spirv_hlsl.cpp"),
++		path.join(SPIRV_CROSS, "spirv_hlsl.hpp"),
++		path.join(SPIRV_CROSS, "spirv_msl.cpp"),
++		path.join(SPIRV_CROSS, "spirv_msl.hpp"),
++		path.join(SPIRV_CROSS, "spirv_parser.cpp"),
++		path.join(SPIRV_CROSS, "spirv_parser.hpp"),
++		path.join(SPIRV_CROSS, "spirv_reflect.cpp"),
++		path.join(SPIRV_CROSS, "spirv_reflect.hpp"),
++	}
++
++	configuration { "vs*" }
++		buildoptions {
++			"/wd4018", -- warning C4018: '<': signed/unsigned mismatch
++			"/wd4245", -- warning C4245: 'return': conversion from 'int' to 'unsigned int', signed/unsigned mismatch
++			"/wd4706", -- warning C4706: assignment within conditional expression
++			"/wd4715", -- warning C4715: '': not all control paths return a value
++		}
++
++	configuration { "mingw* or linux* or osx*" }
++		buildoptions {
++			"-Wno-type-limits",
++		}
++
++	configuration {}
++
++--project "glslang"
++--    kind "StaticLib"
++
++    defines {
++        "ENABLE_OPT=1", -- spirv-tools
++        "ENABLE_HLSL=1",
++        "BRTSHADERC_LIBRARY",
++    }
++    
++    includedirs {
++        GLSLANG,
++    }
++
++    files {
++        path.join(GLSLANG, "glslang/**.cpp"),
++        path.join(GLSLANG, "glslang/**.h"),
++
++        path.join(GLSLANG, "hlsl/**.cpp"),
++        path.join(GLSLANG, "hlsl/**.h"),
++
++        path.join(GLSLANG, "SPIRV/**.cpp"),
++        path.join(GLSLANG, "SPIRV/**.h"),
++
++        path.join(GLSLANG, "OGLCompilersDLL/**.cpp"),
++        path.join(GLSLANG, "OGLCompilersDLL/**.h"),
++    }
++
++    removefiles {
++        path.join(GLSLANG, "glslang/OSDependent/Unix/main.cpp"),
++        path.join(GLSLANG, "glslang/OSDependent/Windows/main.cpp"),
++    }
++
++    configuration { "windows" }
++        removefiles {
++            path.join(GLSLANG, "glslang/OSDependent/Unix/**.cpp"),
++            path.join(GLSLANG, "glslang/OSDependent/Unix/**.h"),
++        }
++
++    configuration { "not windows" }
++        removefiles {
++            path.join(GLSLANG, "glslang/OSDependent/Windows/**.cpp"),
++            path.join(GLSLANG, "glslang/OSDependent/Windows/**.h"),
++        }
++
++    configuration { "vs*" }
++        buildoptions {
++            "/wd4005", -- warning C4005: '_CRT_SECURE_NO_WARNINGS': macro redefinition
++            "/wd4100", -- warning C4100: 'inclusionDepth' : unreferenced formal parameter
++            "/wd4127", -- warning C4127: conditional expression is constant
++            "/wd4189", -- warning C4189: 'isFloat': local variable is initialized but not referenced
++            "/wd4244", -- warning C4244: '=': conversion from 'int' to 'char', possible loss of data
++            "/wd4310", -- warning C4310: cast truncates constant value
++            "/wd4456", -- warning C4456: declaration of 'feature' hides previous local declaration
++            "/wd4457", -- warning C4457: declaration of 'token' hides function parameter
++            "/wd4458", -- warning C4458: declaration of 'language' hides class member
++            "/wd4702", -- warning C4702: unreachable code
++            "/wd4715", -- warning C4715: 'spv::Builder::makeFpConstant': not all control paths return a value
++        }
++
++    configuration { "mingw* or linux or osx" }
++        buildoptions {
++            "-Wno-ignored-qualifiers",
++            "-Wno-missing-field-initializers",
++            "-Wno-reorder",
++            "-Wno-return-type",
++            "-Wno-shadow",
++            "-Wno-sign-compare",
++            "-Wno-undef",
++            "-Wno-unknown-pragmas",
++            "-Wno-unused-function",
++            "-Wno-unused-parameter",
++            "-Wno-unused-variable",
++        }
++
++    configuration { "osx" }
++        buildoptions {
++            "-Wno-c++11-extensions",
++            "-Wno-unused-const-variable",
++            "-Wno-deprecated-register",
++        }
++
++    configuration { "linux-*" }
++        buildoptions {
++            "-Wno-unused-but-set-variable",
++        }
++
++    configuration { "mingw* or linux or osx" }
++        buildoptions {
++            "-fno-strict-aliasing", -- glslang has bugs if strict aliasing is used.
++        }
++
++    configuration {}
++
++--project "glsl-optimizer"
++--   kind "StaticLib"
++
++    includedirs {
++        path.join(GLSL_OPTIMIZER, "src"),
++        path.join(GLSL_OPTIMIZER, "include"),
++        path.join(GLSL_OPTIMIZER, "src/mesa"),
++        path.join(GLSL_OPTIMIZER, "src/mapi"),
++        path.join(GLSL_OPTIMIZER, "src/glsl"),
++    }
++
++    files {
++        path.join(GLSL_OPTIMIZER, "src/mesa/**.c"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/**.cpp"),
++        path.join(GLSL_OPTIMIZER, "src/mesa/**.h"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/**.c"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/**.cpp"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/**.h"),
++        path.join(GLSL_OPTIMIZER, "src/util/**.c"),
++        path.join(GLSL_OPTIMIZER, "src/util/**.h"),
++    }
++
++    removefiles {
++        path.join(GLSL_OPTIMIZER, "src/glsl/glcpp/glcpp.c"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/glcpp/tests/**"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/glcpp/**.l"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/glcpp/**.y"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/ir_set_program_inouts.cpp"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/main.cpp"),
++        path.join(GLSL_OPTIMIZER, "src/glsl/builtin_stubs.cpp"),
++    }
++
++    configuration { "Release" }
++        flags {
++            "Optimize",
++        }
++
++        removeflags {
++            -- GCC 4.9 -O2 + -fno-strict-aliasing don't work together...
++            "OptimizeSpeed",
++        }
++
++    configuration { "vs*" }
++        includedirs {
++            path.join(GLSL_OPTIMIZER, "src/glsl/msvc"),
++        }
++
++        defines { -- glsl-optimizer
++            "__STDC__",
++            "__STDC_VERSION__=199901L",
++            "strdup=_strdup",
++            "alloca=_alloca",
++            "isascii=__isascii",
++        }
++
++        buildoptions {
++            "/wd4100", -- error C4100: '' : unreferenced formal parameter
++            "/wd4127", -- warning C4127: conditional expression is constant
++            "/wd4132", -- warning C4132: 'deleted_key_value': const object should be initialized
++            "/wd4189", -- warning C4189: 'interface_type': local variable is initialized but not referenced
++            "/wd4204", -- warning C4204: nonstandard extension used: non-constant aggregate initializer
++            "/wd4244", -- warning C4244: '=': conversion from 'const flex_int32_t' to 'YY_CHAR', possible loss of data
++            "/wd4389", -- warning C4389: '!=': signed/unsigned mismatch
++            "/wd4245", -- warning C4245: 'return': conversion from 'int' to 'unsigned int', signed/unsigned mismatch
++            "/wd4701", -- warning C4701: potentially uninitialized local variable 'lower' used
++            "/wd4702", -- warning C4702: unreachable code
++            "/wd4706", -- warning C4706: assignment within conditional expression
++            "/wd4996", -- warning C4996: 'strdup': The POSIX name for this item is deprecated. Instead, use the ISO C++ conformant name: _strdup.
++        }
++
++    configuration { "mingw* or linux or osx" }
++        buildoptions {
++            "-fno-strict-aliasing", -- glsl-optimizer has bugs if strict aliasing is used.
++
++            "-Wno-implicit-fallthrough",
++            "-Wno-sign-compare",
++            "-Wno-unused-function",
++            "-Wno-unused-parameter",
++        }
++
++        removebuildoptions {
++            "-Wshadow", -- glsl-optimizer is full of -Wshadow warnings ignore it.
++        }
++
++    configuration { "osx" }
++        buildoptions {
++            "-Wno-deprecated-register",
++        }
++
++    configuration { "mingw* or linux" }
++        buildoptions {
++            "-Wno-misleading-indentation",
++        }
++
++    configuration {}
++
++--project "fcpp"
++--    kind "StaticLib"
++
++    defines { -- fcpp
++        "NINCLUDE=64",
++        "NWORK=65536",
++        "NBUFF=65536",
++        "OLD_PREPROCESSOR=0",
++    }
++
++    files {
++        path.join(FCPP_DIR, "**.h"),
++        path.join(FCPP_DIR, "cpp1.c"),
++        path.join(FCPP_DIR, "cpp2.c"),
++        path.join(FCPP_DIR, "cpp3.c"),
++        path.join(FCPP_DIR, "cpp4.c"),
++        path.join(FCPP_DIR, "cpp5.c"),
++        path.join(FCPP_DIR, "cpp6.c"),
++        path.join(FCPP_DIR, "cpp6.c"),
++    }
++
++    configuration { "vs*" }
++
++        buildoptions {
++            "/wd4055", -- warning C4055: 'type cast': from data pointer 'void *' to function pointer 'void (__cdecl *)(char *,void *)'
++            "/wd4244", -- warning C4244: '=': conversion from 'const flex_int32_t' to 'YY_CHAR', possible loss of data
++            "/wd4701", -- warning C4701: potentially uninitialized local variable 'lower' used
++            "/wd4706", -- warning C4706: assignment within conditional expression
++        }
++
++    configuration { "not vs*" }
++        buildoptions {
++            "-Wno-implicit-fallthrough",
++        }
++
++    configuration {}
++
++--project "shaderc"
++--    kind "ConsoleApp"
++
++    defines {
++        "BRTSHADERC_LIBRARY",
++    }
++
++    includedirs {
++        path.join(BX_DIR,   "include"),
++        path.join(BIMG_DIR, "include"),
++        path.join(BGFX_DIR, "include"),
++
++        path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
++        FCPP_DIR,
++
++        path.join(BGFX_DIR, "3rdparty/glslang/glslang/Public"),
++        path.join(BGFX_DIR, "3rdparty/glslang/glslang/Include"),
++        path.join(BGFX_DIR, "3rdparty/glslang"),
++
++        path.join(GLSL_OPTIMIZER, "include"),
++        path.join(GLSL_OPTIMIZER, "src/glsl"),
++    }
++
++    links {
++        "bx",
++        "fcpp",
++        "glslang",
++        "glsl-optimizer",
++        "spirv-opt",
++    }
++
++    files {
++        path.join(BGFX_DIR, "tools/shaderc/**.cpp"),
++        path.join(BGFX_DIR, "tools/shaderc/**.h"),
++        path.join(BGFX_DIR, "src/vertexdecl.**"),
++        path.join(BGFX_DIR, "src/shader_spirv.**"),
++    }
++
++    configuration { "mingw-*" }
++        targetextension ".exe"
++
++    configuration { "osx" }
++        links {
++            "Cocoa.framework",
++        }
++
++    configuration { "vs*" }
++        includedirs {
++            path.join(GLSL_OPTIMIZER, "include/c99"),
++        }
++
++    configuration { "vs20* or mingw*" }
++        links {
++            "psapi",
++        }
++
++    configuration { "Debug" }
++        defines {
++            "BX_CONFIG_DEBUG=1",
++        }
++
++    configuration { "Release" }
++        defines {
++            "BX_CONFIG_DEBUG=0",
++        }
++
++    configuration {}
++
++    if filesexist(BGFX_DIR, path.join(BGFX_DIR, "../bgfx-ext"), {
++        path.join(BGFX_DIR, "scripts/shaderc.lua"), }) then
++
++        if filesexist(BGFX_DIR, path.join(BGFX_DIR, "../bgfx-ext"), {
++            path.join(BGFX_DIR, "tools/shaderc/shaderc_pssl.cpp"), }) then
++
++            removefiles {
++                path.join(BGFX_DIR, "tools/shaderc/shaderc_pssl.cpp"),
++            }
++        end
++
++        dofile(path.join(BGFX_DIR, "../bgfx-ext/scripts/shaderc.lua") )
++    end
++
++    configuration { "osx or linux*" }
++        links {
++            "pthread",
++        }
++
++    configuration {}
++
++    strip()
++
++    using_bx()
+diff --git a/scripts/genie.lua b/scripts/genie.lua
+index ee2c37a33..342127b59 100644
+--- a/scripts/genie.lua
++++ b/scripts/genie.lua
+@@ -575,3 +575,5 @@ if _OPTIONS["with-tools"] then
+ 	dofile "geometryc.lua"
+ 	dofile "geometryv.lua"
+ end
++
++dofile "brtshaderc.lua"
+diff --git a/tools/brtshaderc/brtshaderc.cpp b/tools/brtshaderc/brtshaderc.cpp
+new file mode 100644
+index 000000000..e5ddeef76
+--- /dev/null
++++ b/tools/brtshaderc/brtshaderc.cpp
+@@ -0,0 +1,515 @@
++#include <cstdio>
++#include <bx/file.h>
++#include <vector>
++
++namespace bgfx
++{
++    typedef void(*UserErrorFn)(void*, const char*, va_list);
++    static UserErrorFn s_user_error_fn = nullptr;
++    static void* s_user_error_ptr = nullptr;
++    void setShaderCErrorFunction(UserErrorFn fn, void* user_ptr)
++    {
++        s_user_error_fn = fn;
++        s_user_error_ptr = user_ptr;
++    }
++}
++
++void printError(FILE* file, const char* format, ...)
++{
++    va_list args;
++    va_start(args, format);
++    if (bgfx::s_user_error_fn)
++    {
++        bgfx::s_user_error_fn(bgfx::s_user_error_ptr, format, args);
++    }
++    else
++    {
++        vfprintf(file, format, args);
++    }
++    va_end(args);
++}
++
++// hack to defined stuff
++#define fprintf printError
++#define main fakeMain
++#define g_allocator g_shaderc_allocator
++
++// fix warnings
++// #undef BX_TRACE
++// #undef BX_WARN
++// #undef BX_CHECK
++
++// include original shaderc code files
++#include "../shaderc/shaderc.cpp"
++//#define static_allocate static_allocate_shaderc
++//#define static_deallocate static_deallocate_shaderc
++//#include "../shaderc/shaderc_spirv.cpp"
++//#include "../shaderc/shaderc_pssl.cpp"
++
++#include "brtshaderc.h"
++using namespace bgfx;
++
++namespace shaderc
++{
++    /// not a real FileWriter, but a hack to redirect write() to a memory block.
++    class BufferWriter : public bx::FileWriter
++    {
++    public:
++
++        BufferWriter()
++        {
++        }
++
++        ~BufferWriter()
++        {
++        }
++
++        bool open(const bx::FilePath& _filePath, bool _append, bx::Error* _err) override
++        {
++            return true;
++        }
++
++        const bgfx::Memory* finalize()
++        {
++            if(_buffer.size() > 0)
++            {
++                _buffer.push_back('\0');
++
++                const bgfx::Memory* mem = bgfx::alloc(_buffer.size());
++                bx::memCopy(mem->data, _buffer.data(), _buffer.size());
++                return mem;
++            }
++
++            return nullptr;
++        }
++
++        int32_t write(const void* _data, int32_t _size, bx::Error* _err) override
++        {
++            const char* data = (const char*)_data;
++            _buffer.insert(_buffer.end(), data, data+_size);
++            return _size;
++        }
++
++    private:
++        BX_ALIGN_DECL(16, uint8_t) m_internal[64];
++        typedef std::vector<uint8_t> Buffer;
++        Buffer _buffer;
++    };
++
++    const char* getProfile(bgfx::RendererType::Enum rendererType, ShaderType shaderType)
++    {
++        switch(rendererType)
++        {
++        default:
++        case bgfx::RendererType::Noop:         //!< No rendering.
++            break;
++        case bgfx::RendererType::Direct3D11:   //!< Direct3D 11.0
++        {
++            if(shaderType == 'v')
++                return "vs_4_0";
++            else if(shaderType == 'f')
++                return "ps_4_0";
++            else if(shaderType == 'c')
++                return "cs_5_0";
++        }
++        break;
++        case bgfx::RendererType::Direct3D12:   //!< Direct3D 12.0
++        {
++            if(shaderType == 'v')
++                return "vs_5_0";
++            else if(shaderType == 'f')
++                return "ps_5_0";
++            else if(shaderType == 'c')
++                return "cs_5_0";
++        }
++        case bgfx::RendererType::Gnm:          //!< GNM
++            break;
++        case bgfx::RendererType::Metal:        //!< Metal
++            break;
++        case bgfx::RendererType::OpenGLES:     //!< OpenGL ES 2.0+
++            break;
++        case bgfx::RendererType::OpenGL:       //!< OpenGL 2.1+
++        {
++            if(shaderType == 'v' || shaderType == 'f')
++                return "120";
++            else if(shaderType == 'c')
++                return "430";
++        }
++        break;
++        case bgfx::RendererType::Vulkan:       //!< Vulkan
++            break;
++        };
++
++        return NULL;
++    }
++
++    const bgfx::Memory* compileShader(ShaderType shaderType, const char* filePath, const char* defines, const char* varyingPath, const char* profile)
++    {
++        bgfx::Options options;
++
++        options.inputFilePath = filePath;
++        options.shaderType = shaderType;
++
++        // set platform
++#if BX_PLATFORM_LINUX
++        options.platform = "linux";
++#elif BX_PLATFORM_WINDOWS
++        options.platform = "windows";
++#elif BX_PLATFORM_ANDROID
++        options.platform = "android";
++#elif BX_PLATFORM_EMSCRIPTEN
++        options.platform = "asm.js";
++#elif BX_PLATFORM_IOS
++        options.platform = "ios";
++#elif BX_PLATFORM_OSX
++        options.platform = "osx";
++#endif
++
++        // set profile
++        if (profile)
++        {
++            // user profile
++            options.profile = profile;
++        }
++        else
++        {
++            // set default profile for current running renderer.
++            bgfx::RendererType::Enum rendererType = bgfx::getRendererType();
++            options.profile = getProfile(rendererType, shaderType);
++        }
++
++        // include current dir
++        std::string dir;
++        {
++            bx::FilePath fp(filePath);
++            bx::StringView path(fp.getPath());
++
++            std::string str = std::string(path.getPtr());
++
++            dir.assign(path.getPtr(), path.getTerm());
++            options.includeDirs.push_back(dir);
++        }
++
++        // set defines
++        while (NULL != defines && '\0' != *defines)
++        {
++            defines = bx::strLTrimSpace(defines).getPtr();
++            bx::StringView eol = bx::strFind(defines, ';');
++            std::string define(defines, eol.getPtr() );
++            options.defines.push_back(define.c_str() );
++            defines = ';' == *eol.getPtr() ? eol.getPtr()+1 : eol.getPtr();
++        }
++
++        // set varyingdef
++        std::string defaultVarying = dir + "varying.def.sc";
++        const char* varyingdef = varyingPath ? varyingPath : defaultVarying.c_str();
++        auto attribdef = bgfx::File();
++        attribdef.load(varyingdef);
++        const char* parse = attribdef.getData();
++        if (NULL != parse && *parse != '\0')
++        {
++            options.dependencies.push_back(varyingdef);
++        }
++        else
++        {
++            fprintf(stderr, "ERROR: Failed to parse varying def file: \"%s\" No input/output semantics will be generated in the code!\n", varyingdef);
++            return nullptr;
++        }
++
++        // read shader source file
++        bx::FileReader reader;
++        if (!bx::open(&reader, filePath))
++        {
++            fprintf(stderr, "Unable to open file '%s'.\n", filePath);
++            return nullptr;
++        }
++
++        // add padding
++        const size_t padding = 16384;
++        uint32_t size = (uint32_t)bx::getSize(&reader);
++        char* data = new char[size + padding + 1];
++        size = (uint32_t)bx::read(&reader, data, size, NULL);
++
++        if (data[0] == '\xef'
++        &&  data[1] == '\xbb'
++        &&  data[2] == '\xbf')
++        {
++            bx::memMove(data, &data[3], size-3);
++            size -= 3;
++        }
++
++        // Compiler generates "error X3000: syntax error: unexpected end of file"
++        // if input doesn't have empty line at EOF.
++        data[size] = '\n';
++        bx::memSet(&data[size+1], 0, padding);
++        bx::close(&reader);
++
++
++        std::string commandLineComment = "// shaderc command line:\n";
++
++        // compile shader.
++
++        BufferWriter writer;
++        if ( bgfx::compileShader(attribdef.getData(), commandLineComment.c_str(), data, size, options, &writer, bx::getStdOut()) )
++        {
++            // this will copy the compiled shader data to a memory block and return mem ptr
++            return writer.finalize();
++        }
++
++        return nullptr;
++    }
++
++    void help(const char* _error = NULL)
++    {
++        if (NULL != _error)
++        {
++            fprintf(stderr, "brtshaderc error:\n%s\n\n", _error);
++        }
++    }
++
++    bx::StringView baseName(const char* _filePath)
++    {
++        bx::FilePath fp(_filePath);
++        return bx::strFind(_filePath, fp.getBaseName() );
++    }
++
++    int compileShader(int _argc, const char* _argv[], bx::FileWriter* _writer)
++    {
++        bx::CommandLine cmdLine(_argc, _argv);
++
++        if (cmdLine.hasArg('v', "version") )
++        {
++            fprintf(stderr
++                , "shaderc, bgfx shader compiler tool, version %d.%d.%d.\n"
++                , BGFX_SHADERC_VERSION_MAJOR
++                , BGFX_SHADERC_VERSION_MINOR
++                , BGFX_API_VERSION
++                );
++            return bx::kExitSuccess;
++        }
++
++        if (cmdLine.hasArg('h', "help") )
++        {
++            help();
++            return bx::kExitFailure;
++        }
++
++        //@@g_verbose = cmdLine.hasArg("verbose");
++
++        const char* filePath = cmdLine.findOption('f');
++        if (NULL == filePath)
++        {
++            help("Shader file name must be specified.");
++            return bx::kExitFailure;
++        }
++
++        const char* outFilePath = cmdLine.findOption('o');
++        ///@if (NULL == outFilePath)
++        ///@{
++        ///@    help("Output file name must be specified.");
++        ///@    return bx::kExitFailure;
++        ///@}
++
++        const char* type = cmdLine.findOption('\0', "type");
++        if (NULL == type)
++        {
++            help("Must specify shader type.");
++            return bx::kExitFailure;
++        }
++
++        Options options;
++        options.inputFilePath = filePath;
++        options.outputFilePath = outFilePath;
++        options.shaderType = bx::toLower(type[0]);
++
++        options.disasm = cmdLine.hasArg('\0', "disasm");
++
++        const char* platform = cmdLine.findOption('\0', "platform");
++        if (NULL == platform)
++        {
++            platform = "";
++        }
++
++        options.platform = platform;
++
++        options.raw = cmdLine.hasArg('\0', "raw");
++
++        const char* profile = cmdLine.findOption('p', "profile");
++
++        if ( NULL != profile)
++        {
++            options.profile = profile;
++        }
++
++        {
++            options.debugInformation       = cmdLine.hasArg('\0', "debug");
++            options.avoidFlowControl       = cmdLine.hasArg('\0', "avoid-flow-control");
++            options.noPreshader            = cmdLine.hasArg('\0', "no-preshader");
++            options.partialPrecision       = cmdLine.hasArg('\0', "partial-precision");
++            options.preferFlowControl      = cmdLine.hasArg('\0', "prefer-flow-control");
++            options.backwardsCompatibility = cmdLine.hasArg('\0', "backwards-compatibility");
++            options.warningsAreErrors      = cmdLine.hasArg('\0', "Werror");
++            options.keepIntermediate       = cmdLine.hasArg('\0', "keep-intermediate");
++
++            uint32_t optimization = 3;
++            if (cmdLine.hasArg(optimization, 'O') )
++            {
++                options.optimize = true;
++                options.optimizationLevel = optimization;
++            }
++        }
++
++        ///@const char* bin2c = NULL;
++        ///@if (cmdLine.hasArg("bin2c") )
++        ///@{
++        ///@    bin2c = cmdLine.findOption("bin2c");
++        ///@    if (NULL == bin2c)
++        ///@    {
++        ///@        bin2c = baseName(outFilePath);
++        ///@        uint32_t len = (uint32_t)bx::strLen(bin2c);
++        ///@        char* temp = (char*)alloca(len+1);
++        ///@        for (char *out = temp; *bin2c != '\0';)
++        ///@        {
++        ///@            char ch = *bin2c++;
++        ///@            if (isalnum(ch) )
++        ///@            {
++        ///@                *out++ = ch;
++        ///@            }
++        ///@            else
++        ///@            {
++        ///@                *out++ = '_';
++        ///@            }
++        ///@        }
++        ///@        temp[len] = '\0';
++        ///@
++        ///@        bin2c = temp;
++        ///@    }
++        ///@}
++
++        options.depends = cmdLine.hasArg("depends");
++        options.preprocessOnly = cmdLine.hasArg("preprocess");
++        const char* includeDir = cmdLine.findOption('i');
++
++        BX_TRACE("depends: %d", options.depends);
++        BX_TRACE("preprocessOnly: %d", options.preprocessOnly);
++        BX_TRACE("includeDir: %s", includeDir);
++
++        for (int ii = 1; NULL != includeDir; ++ii)
++        {
++            options.includeDirs.push_back(includeDir);
++            includeDir = cmdLine.findOption(ii, 'i');
++        }
++
++        std::string dir;
++        {
++            bx::FilePath fp(filePath);
++            bx::StringView path(fp.getPath() );
++
++            dir.assign(path.getPtr(), path.getTerm() );
++            options.includeDirs.push_back(dir);
++        }
++
++        const char* defines = cmdLine.findOption("define");
++        while (NULL != defines
++        &&    '\0'  != *defines)
++        {
++            defines = bx::strLTrimSpace(defines).getPtr();
++            bx::StringView eol = bx::strFind(defines, ';');
++            std::string define(defines, eol.getPtr() );
++            options.defines.push_back(define.c_str() );
++            defines = ';' == *eol.getPtr() ? eol.getPtr()+1 : eol.getPtr();
++        }
++
++        std::string commandLineComment = "// shaderc command line:\n//";
++        for (int32_t ii = 0, num = cmdLine.getNum(); ii < num; ++ii)
++        {
++            commandLineComment += " ";
++            commandLineComment += cmdLine.get(ii);
++        }
++        commandLineComment += "\n\n";
++
++        bool compiled = false;
++
++        bx::FileReader reader;
++        if (!bx::open(&reader, filePath) )
++        {
++            fprintf(stderr, "Unable to open file '%s'.\n", filePath);
++        }
++        else
++        {
++            std::string defaultVarying = dir + "varying.def.sc";
++            const char* varyingdef = cmdLine.findOption("varyingdef", defaultVarying.c_str() );
++            auto attribdef = File();
++            attribdef.load(varyingdef);
++            const char* parse = attribdef.getData();
++            if (NULL != parse
++            &&  *parse != '\0')
++            {
++                options.dependencies.push_back(varyingdef);
++            }
++            else
++            {
++                fprintf(stderr, "ERROR: Failed to parse varying def file: \"%s\" No input/output semantics will be generated in the code!\n", varyingdef);
++            }
++
++            const size_t padding    = 16384;
++            uint32_t size = (uint32_t)bx::getSize(&reader);
++            char* data = new char[size+padding+1];
++            size = (uint32_t)bx::read(&reader, data, size, NULL);
++
++            if (data[0] == '\xef'
++            &&  data[1] == '\xbb'
++            &&  data[2] == '\xbf')
++            {
++                bx::memMove(data, &data[3], size-3);
++                size -= 3;
++            }
++
++            // Compiler generates "error X3000: syntax error: unexpected end of file"
++            // if input doesn't have empty line at EOF.
++            data[size] = '\n';
++            bx::memSet(&data[size+1], 0, padding);
++            bx::close(&reader);
++
++            ///@bx::FileWriter* writer = NULL;
++            bx::FileWriter* writer = _writer;
++
++            ///@if (NULL != bin2c)
++            ///@{
++            ///@    writer = new Bin2cWriter(bin2c);
++            ///@}
++            ///@else
++            ///@{
++            ///@    writer = new bx::FileWriter;
++            ///@}
++
++            if (!bx::open(writer, outFilePath) )
++            {
++                fprintf(stderr, "Unable to open output file '%s'.", outFilePath);
++                return bx::kExitFailure;
++            }
++
++            compiled = compileShader(attribdef.getData(), commandLineComment.c_str(), data, size, options, writer, bx::getStdOut());
++
++            bx::close(writer);
++            ///@delete writer;
++        }
++      return 0;
++    }
++
++    const bgfx::Memory* compileShader(int argc, const char* argv[])
++    {
++        BufferWriter writer;
++        int error = compileShader(argc, argv, &writer);
++
++        if(!error)
++        {
++            return writer.finalize();
++        }
++
++        return nullptr;
++    }
++}
++
++// restore previous defines BX_TRACE BX_WARN and BX_CHECK
++#include "../shaderc/shaderc.h"
+diff --git a/tools/brtshaderc/brtshaderc.h b/tools/brtshaderc/brtshaderc.h
+new file mode 100644
+index 000000000..e010a7c14
+--- /dev/null
++++ b/tools/brtshaderc/brtshaderc.h
+@@ -0,0 +1,43 @@
++#ifndef BRTSHADERC_H_HEADER_GUARD
++#define BRTSHADERC_H_HEADER_GUARD
++
++namespace shaderc
++{
++    enum ShaderType
++    {
++        ST_VERTEX      = 'v',   /// vertex
++        ST_FRAGMENT    = 'f',   /// fragment
++        ST_COMPUTE     = 'c',   /// compute
++    };
++
++    /**
++     * Compile a shader from source file and return memory pointer that contains the compiled shader.
++     *
++     * @param type : Shader type to comile (vertex, fragment or compute)
++     * @param filePath : Shader source file path.
++     * @param defines : List of defines semicolon separated ex: "foo=1;bar;baz=1".
++     * @param varyingPath : File path for varying.def.sc, or assume default name is "varying.def.sc" in current dir.
++     * @param profile : shader profile ("ps_4_0", "vs_4_0", ...). If null, library try to set default profile for current context.
++     * @return a memory block of compiled shader ready to use with bgfx::createShader, or null if failed.
++     */
++    const bgfx::Memory* compileShader(ShaderType type, const char* filePath, const char* defines = nullptr, const char* varyingPath = nullptr, const char* profile = nullptr);
++
++    /**
++     * Compile a shader from arguments list (same as shaderc binary version).
++     *
++     * @param argc : Arguments count.
++     * @param argv : Arguments list.
++     * @return a memory block of compiled shader ready to use with bgfx::createShader, or null if failed.
++     */
++    const bgfx::Memory* compileShader(int argc, const char* argv[]);
++
++    /**
++     * Gets the profile code based on the renderer type and shader type.
++     *
++     * @param rendererType : Renderer type.
++     * @param shaderType : Shader type.
++     * @return the profile code.
++     */
++    const char* getProfile(bgfx::RendererType::Enum rendererType, ShaderType shaderType);
++}
++#endif
+\ No newline at end of file
+diff --git a/tools/shaderc/shaderc.cpp b/tools/shaderc/shaderc.cpp
+index 3ecf850b7..8516080cb 100644
+--- a/tools/shaderc/shaderc.cpp
++++ b/tools/shaderc/shaderc.cpp
+@@ -304,7 +304,7 @@ namespace bgfx
+ 		NULL
+ 	};
+ 
+-	const char* s_uniformTypeName[] =
++	const char* s_shaderc_uniformTypeName[] =
+ 	{
+ 		"int",  "int",
+ 		NULL,   NULL,
+@@ -312,7 +312,7 @@ namespace bgfx
+ 		"mat3", "float3x3",
+ 		"mat4", "float4x4",
+ 	};
+-	static_assert(BX_COUNTOF(s_uniformTypeName) == UniformType::Count*2);
++	static_assert(BX_COUNTOF(s_shaderc_uniformTypeName) == UniformType::Count*2);
+ 
+ 	static const char* s_allowedVertexShaderInputs[] =
+ 	{
+@@ -342,6 +342,7 @@ namespace bgfx
+ 		NULL
+ 	};
+ 
++#ifndef BRTSHADERC_LIBRARY
+ 	void fatal(const char* _filePath, uint16_t _line, Fatal::Enum _code, const char* _format, ...)
+ 	{
+ 		BX_UNUSED(_filePath, _line, _code);
+@@ -367,6 +368,8 @@ namespace bgfx
+ 
+ 		va_end(argList);
+ 	}
++#endif // BRTSHADERC_LIBRARY
++
+ 	Options::Options()
+ 		: shaderType(' ')
+ 		, disasm(false)
+@@ -460,23 +463,23 @@ namespace bgfx
+ 		return _glsl; // centroid, noperspective
+ 	}
+ 
+-	const char* getUniformTypeName(UniformType::Enum _enum)
++	const char* shaderc_getUniformTypeName(UniformType::Enum _enum)
+ 	{
+ 		uint32_t idx = _enum & ~(kUniformFragmentBit|kUniformSamplerBit);
+ 		if (idx < UniformType::Count)
+ 		{
+-			return s_uniformTypeName[idx];
++			return s_shaderc_uniformTypeName[idx];
+ 		}
+ 
+ 		return "Unknown uniform type?!";
+ 	}
+ 
+-	UniformType::Enum nameToUniformTypeEnum(const char* _name)
++	UniformType::Enum shaderc_nameToUniformTypeEnum(const char* _name)
+ 	{
+ 		for (uint32_t ii = 0; ii < UniformType::Count*2; ++ii)
+ 		{
+-			if (NULL != s_uniformTypeName[ii]
+-			&&  0 == bx::strCmp(_name, s_uniformTypeName[ii]) )
++			if (NULL != s_shaderc_uniformTypeName[ii]
++			&&  0 == bx::strCmp(_name, s_shaderc_uniformTypeName[ii]) )
+ 			{
+ 				return UniformType::Enum(ii/2);
+ 			}
+diff --git a/tools/shaderc/shaderc.h b/tools/shaderc/shaderc.h
+index 98f135a07..cd9fdbf75 100644
+--- a/tools/shaderc/shaderc.h
++++ b/tools/shaderc/shaderc.h
+@@ -48,8 +48,8 @@ namespace bgfx
+ 		| kUniformCompareBit
+ 		;
+ 
+-	const char* getUniformTypeName(UniformType::Enum _enum);
+-	UniformType::Enum nameToUniformTypeEnum(const char* _name);
++	const char* shaderc_getUniformTypeName(UniformType::Enum _enum);
++	UniformType::Enum shaderc_nameToUniformTypeEnum(const char* _name);
+ 
+ 	struct Uniform
+ 	{
+diff --git a/tools/shaderc/shaderc_glsl.cpp b/tools/shaderc/shaderc_glsl.cpp
+index cf177068f..ce751c2fb 100644
+--- a/tools/shaderc/shaderc_glsl.cpp
++++ b/tools/shaderc/shaderc_glsl.cpp
+@@ -198,7 +198,7 @@ namespace bgfx { namespace glsl
+ 					}
+ 
+ 					Uniform un;
+-					un.type = nameToUniformTypeEnum(uniformType);
++					un.type = shaderc_nameToUniformTypeEnum(uniformType);
+ 
+ 					if (UniformType::Count != un.type)
+ 					{
+@@ -275,7 +275,7 @@ namespace bgfx { namespace glsl
+ 					}
+ 
+ 					Uniform un;
+-					un.type = nameToUniformTypeEnum(uniformType);
++					un.type = shaderc_nameToUniformTypeEnum(uniformType);
+ 
+ 					if (UniformType::Count != un.type)
+ 					{
+@@ -311,7 +311,7 @@ namespace bgfx { namespace glsl
+ 				if (!textureName.isEmpty())
+ 				{
+ 					Uniform un;
+-					un.type = nameToUniformTypeEnum("int");	// int for sampler
++					un.type = shaderc_nameToUniformTypeEnum("int");	// int for sampler
+ 					const char* varNameEnd = textureName.getPtr() - 1;
+ 					parse.set(parse.getPtr(), varNameEnd - 1);
+ 					const char* varNameBeg = parse.getPtr();
+@@ -369,7 +369,7 @@ namespace bgfx { namespace glsl
+ 
+ 			BX_TRACE("%s, %s, %d, %d, %d"
+ 				, un.name.c_str()
+-				, getUniformTypeName(un.type)
++				, shaderc_getUniformTypeName(un.type)
+ 				, un.num
+ 				, un.regIndex
+ 				, un.regCount
+diff --git a/tools/shaderc/shaderc_hlsl.cpp b/tools/shaderc/shaderc_hlsl.cpp
+index f677bc477..d7e241268 100644
+--- a/tools/shaderc/shaderc_hlsl.cpp
++++ b/tools/shaderc/shaderc_hlsl.cpp
+@@ -766,7 +766,7 @@ namespace bgfx { namespace hlsl
+ 
+ 				BX_TRACE("%s, %s, %d, %d, %d"
+ 					, un.name.c_str()
+-					, getUniformTypeName(UniformType::Enum(un.type & ~kUniformMask))
++					, shaderc_getUniformTypeName(UniformType::Enum(un.type & ~kUniformMask))
+ 					, un.num
+ 					, un.regIndex
+ 					, un.regCount
+diff --git a/tools/shaderc/shaderc_metal.cpp b/tools/shaderc/shaderc_metal.cpp
+index 022392185..59e48f4aa 100644
+--- a/tools/shaderc/shaderc_metal.cpp
++++ b/tools/shaderc/shaderc_metal.cpp
+@@ -257,7 +257,7 @@ namespace bgfx { namespace metal
+ 
+ 			BX_TRACE("%s, %s, %d, %d, %d"
+ 				, un.name.c_str()
+-				, getUniformTypeName(un.type)
++				, shaderc_getUniformTypeName(un.type)
+ 				, un.num
+ 				, un.regIndex
+ 				, un.regCount
+diff --git a/tools/shaderc/shaderc_spirv.cpp b/tools/shaderc/shaderc_spirv.cpp
+index 5012c6e20..2878cf57c 100644
+--- a/tools/shaderc/shaderc_spirv.cpp
++++ b/tools/shaderc/shaderc_spirv.cpp
+@@ -28,14 +28,18 @@ BX_PRAGMA_DIAGNOSTIC_POP()
+ 
+ namespace bgfx
+ {
+-	static bx::DefaultAllocator s_allocator;
+-	bx::AllocatorI* g_allocator = &s_allocator;
+-
+ 	struct TinyStlAllocator
+ 	{
+ 		static void* static_allocate(size_t _bytes);
+ 		static void static_deallocate(void* _ptr, size_t /*_bytes*/);
+ 	};
++} // namespace bgfx
++
++#ifndef BRTSHADERC_LIBRARY
++namespace bgfx
++{
++	static bx::DefaultAllocator s_allocator;
++	bx::AllocatorI* g_allocator = &s_allocator;
+ 
+ 	void* TinyStlAllocator::static_allocate(size_t _bytes)
+ 	{
+@@ -50,6 +54,7 @@ namespace bgfx
+ 		}
+ 	}
+ } // namespace bgfx
++#endif // BRTSHADERC_LIBRARY
+ 
+ #define TINYSTL_ALLOCATOR bgfx::TinyStlAllocator
+ #include <tinystl/allocator.h>
+@@ -366,7 +371,7 @@ namespace bgfx { namespace spirv
+ 
+ 			BX_TRACE("%s, %s, %d, %d, %d"
+ 				, un.name.c_str()
+-				, getUniformTypeName(UniformType::Enum(un.type & ~kUniformMask))
++				, shaderc_getUniformTypeName(UniformType::Enum(un.type & ~kUniformMask))
+ 				, un.num
+ 				, un.regIndex
+ 				, un.regCount
