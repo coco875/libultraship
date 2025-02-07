@@ -46,6 +46,8 @@ struct BGFXContext {
 
 } context;
 
+const bgfx::Caps* caps = bgfx::getCaps();
+
 static void gfx_bgfx_init(void) {
     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetInstance()->GetWindow());
 
@@ -83,7 +85,7 @@ static void gfx_bgfx_init(void) {
     pd.backBufferDS = NULL;
 
     bgfx::Init bgfx_init;
-    bgfx_init.type = bgfx::RendererType::Vulkan; // auto choose renderer
+    bgfx_init.type = bgfx::RendererType::OpenGL; // auto choose renderer
     bgfx_init.resolution.width = wnd->GetWidth();
     bgfx_init.resolution.height = wnd->GetHeight();
     bgfx_init.resolution.reset = BGFX_RESET_VSYNC;
@@ -96,8 +98,7 @@ static void gfx_bgfx_init(void) {
 }
 
 static int gfx_bgfx_get_max_texture_size() {
-    // TODO: Implement this
-    return 4096;
+    return caps->limits.maxTextureSize;
 }
 
 static const char* gfx_bgfx_get_name() {

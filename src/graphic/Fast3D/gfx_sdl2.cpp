@@ -327,7 +327,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0;
     bool use_metal = false;
 #else
-    bool use_opengl = true;
+    bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0;
     bool use_metal = false;
 #endif
 
