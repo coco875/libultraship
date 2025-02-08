@@ -222,6 +222,8 @@ if (USE_OPENGLES)
     endif()
 endif()
 
+target_link_libraries(libultraship PUBLIC brtshaderc)
+
 #=================== Compile Options & Defs ===================
 
 target_compile_definitions(libultraship PRIVATE ${GBI_UCODE})

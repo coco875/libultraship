@@ -113,7 +113,7 @@ FetchContent_MakeAvailable(ThreadPool)
 #=================== BGFX ===================
 set(bgfx_fixes_and_config_patch_file ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/patch-bgfx.patch)
 
-set(bgfx_apply_patch_if_needed git apply --directory=bgfx ${bgfx_fixes_and_config_patch_file} ${git_hide_output} || git apply --reverse --check ${bgfx_fixes_and_config_patch_file})
+set(bgfx_apply_patch_if_needed git apply ${bgfx_fixes_and_config_patch_file} ${git_hide_output} || git apply --reverse --check ${bgfx_fixes_and_config_patch_file})
 
 set(BGFX_CONFIG_MULTITHREADED OFF)
 FetchContent_Declare(
