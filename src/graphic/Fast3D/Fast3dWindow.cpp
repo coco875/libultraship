@@ -9,6 +9,7 @@
 #include "graphic/Fast3D/gfx_metal.h"
 #include "graphic/Fast3D/gfx_direct3d11.h"
 #include "graphic/Fast3D/gfx_direct3d12.h"
+#include "graphic/Fast3D/gfx_llgl.h"
 #include "graphic/Fast3D/gfx_pc.h"
 
 #include <fstream>
@@ -30,6 +31,7 @@ Fast3dWindow::Fast3dWindow(std::vector<std::shared_ptr<Ship::GuiWindow>> guiWind
     }
 #endif
     AddAvailableWindowBackend(Ship::WindowBackend::FAST3D_SDL_OPENGL);
+    AddAvailableWindowBackend(Ship::WindowBackend::FAST3D_SDL_LLGL);
 }
 
 Fast3dWindow::~Fast3dWindow() {
@@ -125,6 +127,10 @@ void Fast3dWindow::InitWindowManager() {
             mWindowManagerApi = &gfx_sdl;
             break;
 #endif
+        case Ship::WindowBackend::FAST3D_SDL_LLGL:
+            mRenderingApi = &gfx_llgl_api;
+            mWindowManagerApi = &gfx_sdl;
+            break;
         default:
             SPDLOG_ERROR("Could not load the correct rendering backend");
             break;
@@ -260,7 +266,8 @@ uint32_t Fast3dWindow::GetCurrentRefreshRate() {
 
 bool Fast3dWindow::SupportsWindowedFullscreen() {
     if (GetWindowBackend() == Ship::WindowBackend::FAST3D_SDL_OPENGL ||
-        GetWindowBackend() == Ship::WindowBackend::FAST3D_SDL_METAL) {
+        GetWindowBackend() == Ship::WindowBackend::FAST3D_SDL_METAL ||
+        GetWindowBackend() == Ship::WindowBackend::FAST3D_SDL_LLGL) {
         return true;
     }
 

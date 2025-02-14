@@ -323,11 +323,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
 
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
-#if defined(__APPLE__)
     bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0;
-#else
-    bool use_opengl = true;
-#endif
 
     if (use_opengl) {
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
