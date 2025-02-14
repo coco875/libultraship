@@ -120,3 +120,10 @@ FetchContent_Declare(
     GIT_TAG 3a44e54e3b5d372456ba01011cbd9fe78fe6d5c1
 )
 FetchContent_MakeAvailable(prism)
+
+FetchContent_Declare(
+    llgl
+    GIT_REPOSITORY https://github.com/LukasBanana/LLGL.git
+    GIT_TAG 68130598c48ad9038bd0f24df1370b9be4b6809b
+)
+FetchContent_MakeAvailable(llgl)

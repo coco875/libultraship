@@ -219,6 +219,7 @@ if (USE_OPENGLES)
 endif()
 
 target_link_libraries(libultraship PUBLIC prism)
+target_link_libraries(libultraship PRIVATE LLGL)
 
 #=================== Compile Options & Defs ===================
 
