@@ -391,7 +391,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
     bool use_llgl = strcmp(gfx_api_name, "LLGL") == 0;
-    bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0 || (use_llgl && llgl_renderer->GetRendererID() == LLGL::RendererID::OpenGL);
+    bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0; // || (use_llgl && llgl_renderer->GetRendererID() == LLGL::RendererID::OpenGL);
     bool use_metal = strcmp(gfx_api_name, "Metal") == 0;
 
     if (use_opengl) {
@@ -429,7 +429,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
 #endif
 
-    if (use_opengl) {
+    if (use_opengl || (use_llgl && llgl_renderer->GetRendererID() == LLGL::RendererID::OpenGL)) {
         flags = flags | SDL_WINDOW_OPENGL;
     } else if (use_metal) {
         flags = flags | SDL_WINDOW_METAL;
@@ -484,7 +484,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     if (use_llgl) {
         LLGL::SwapChainDescriptor swapChainDesc;
         swapChainDesc.resolution = { window_width, window_height };
-        auto surface = std::make_shared<CustomSurface>(swapChainDesc.resolution, "LLGL SwapChain");
+        auto surface = std::make_shared<CustomSurface>(swapChainDesc.resolution, title);
         llgl_swapChain = llgl_renderer->CreateSwapChain(swapChainDesc, surface);
 
         llgl_cmdBuffer = llgl_renderer->CreateCommandBuffer(LLGL::CommandBufferFlags::ImmediateSubmit);
