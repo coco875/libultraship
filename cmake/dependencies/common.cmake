@@ -121,9 +121,24 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(prism)
 
+set(LLGL_BUILD_EXAMPLES OFF)
+set(LLGL_BUILD_RENDERER_NULL OFF)
+set(LLGL_BUILD_RENDERER_OPENGL ON)
+set(LLGL_GL_ENABLE_DSA_EXT ON)
+set(LLGL_GL_ENABLE_VENDOR_EXT ON)
+set(LLGL_GL_INCLUDE_EXTERNAL ON)
+
+set(LLGL_OUTPUT_DIR ${CMAKE_BINARY_DIR})
+
+set(llgl_patch_file ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/llgl.patch)
+
+# Applies the patch or checks if it has already been applied successfully previously. Will error otherwise.
+set(llgl_apply_patch_if_needed git apply ${llgl_patch_file} ${git_hide_output} || git apply --reverse --check ${llgl_patch_file})
+
 FetchContent_Declare(
     llgl
     GIT_REPOSITORY https://github.com/LukasBanana/LLGL.git
-    GIT_TAG 68130598c48ad9038bd0f24df1370b9be4b6809b
+    GIT_TAG 3df9f9c9eb707d2c0cfedf9a9a26371a7cce91cb
+    PATCH_COMMAND ${llgl_apply_patch_if_needed}
 )
 FetchContent_MakeAvailable(llgl)

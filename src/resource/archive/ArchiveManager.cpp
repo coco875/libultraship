@@ -177,6 +177,7 @@ std::vector<std::string> ArchiveManager::GetArchiveListInPaths(const std::vector
         if (archivePath.length() > 0) {
             if (std::filesystem::is_directory(archivePath)) {
                 for (const auto& p : std::filesystem::recursive_directory_iterator(archivePath)) {
+                    auto a = std::filesystem::absolute(p).string();
                     if (StringHelper::IEquals(p.path().extension().string(), ".otr") ||
                         StringHelper::IEquals(p.path().extension().string(), ".zip") ||
                         StringHelper::IEquals(p.path().extension().string(), ".mpq") ||

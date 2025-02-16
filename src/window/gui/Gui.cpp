@@ -163,11 +163,6 @@ void Gui::ImGuiWMInit() {
             SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
             ImGui_ImplSDL2_InitForOpenGL(static_cast<SDL_Window*>(mImpl.Opengl.Window), mImpl.Opengl.Context);
             break;
-        case WindowBackend::FAST3D_SDL_LLGL:
-            SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
-            SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
-            ImGui_ImplSDL2_LLGL(static_cast<SDL_Window*>(mImpl.LLGL.Window), mImpl.LLGL.Context);
-            break;
 #if __APPLE__
         case WindowBackend::FAST3D_SDL_METAL:
             SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
@@ -211,6 +206,9 @@ void Gui::ImGuiBackendInit() {
                                 static_cast<ID3D11DeviceContext*>(mImpl.Dx11.DeviceContext));
             break;
 #endif
+        case WindowBackend::FAST3D_SDL_LLGL:
+            ImGui_ImplLLGL_Init();
+            break;
         default:
             break;
     }

@@ -4,8 +4,14 @@
 #include "window/gui/Gui.h"
 #include "gfx_pc.h"
 #include <prism/processor.h>
+#include <LLGL/LLGL.h>
+
+LLGL::RenderSystemPtr llgl_renderer;
+LLGL::SwapChain* llgl_swapChain;
+LLGL::CommandBuffer* llgl_cmdBuffer;
 
 const char* gfx_llgl_get_name(void) {
+    // renderer->GetName();
     return "LLGL";
 }
 
@@ -66,6 +72,20 @@ void gfx_llgl_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo
 }
 
 void gfx_llgl_init(void) {
+    LLGL::Report report;
+    llgl_renderer = LLGL::RenderSystem::Load("OpenGL", &report);
+
+    if (!llgl_renderer) {
+        auto a = report.GetText();
+        SPDLOG_ERROR("Failed to load \"%s\" module. Falling back to \"Null\" device.\n", "OpenGL");
+        SPDLOG_ERROR("Reason for failure: %s", report.HasErrors() ? report.GetText() : "Unknown\n");
+        llgl_renderer = LLGL::RenderSystem::Load("Null");
+        if (!llgl_renderer)
+        {
+            SPDLOG_ERROR("Failed to load \"Null\" module. Exiting.\n");
+            exit(1);
+        }
+    }
 }
 
 void gfx_llgl_on_resize(void) {
