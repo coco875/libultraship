@@ -40,6 +40,10 @@
 #include <LLGL/LLGL.h>
 #include "gfx_llgl.h"
 #include "gfx_sdl.h"
+
+#ifdef __APPLE__
+typedef void NSResponder;
+#endif
 #include <LLGL/Platform/NativeHandle.h>
 
 #define GFX_BACKEND_NAME "SDL"
@@ -99,9 +103,13 @@ bool CustomSurface::GetNativeHandle(void* nativeHandle, std::size_t nativeHandle
     SDL_VERSION(&wmInfo.version);
     SDL_GetWindowWMInfo(wnd, &wmInfo);
     auto* nativeHandlePtr = static_cast<LLGL::NativeHandle*>(nativeHandle);
+#ifdef __APPLE__
+   nativeHandlePtr->responder = wmInfo.info.cocoa.window;
+#else
     nativeHandlePtr->display = wmInfo.info.x11.display;
     nativeHandlePtr->window = wmInfo.info.x11.window;
     nativeHandlePtr->visual;
+#endif
     return true;
 }
 
@@ -379,7 +387,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     window_width = width;
     window_height = height;
 
-    setenv("SDL_VIDEODRIVER", "x11", 1);
+    // setenv("SDL_VIDEODRIVER", "x11", 1);
 
 #if SDL_VERSION_ATLEAST(2, 24, 0)
     /* fix DPI scaling issues on Windows */
@@ -454,6 +462,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     }
 
     if (use_opengl) {
+        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
         SDL_GL_GetDrawableSize(wnd, &window_width, &window_height);
 
         if (start_in_fullscreen) {
@@ -488,6 +497,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
         llgl_swapChain = llgl_renderer->CreateSwapChain(swapChainDesc, surface);
 
         llgl_cmdBuffer = llgl_renderer->CreateCommandBuffer(LLGL::CommandBufferFlags::ImmediateSubmit);
+        window_impl.LLGL = { wnd };
     }
 
     Ship::Context::GetInstance()->GetWindow()->GetGui()->Init(window_impl);

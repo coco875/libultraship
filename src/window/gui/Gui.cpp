@@ -207,7 +207,7 @@ void Gui::ImGuiBackendInit() {
             break;
 #endif
         case WindowBackend::FAST3D_SDL_LLGL:
-            ImGui_ImplLLGL_Init();
+            ImGui_ImplLLGL_Init(mImpl.LLGL.Window);
             break;
         default:
             break;
@@ -325,6 +325,9 @@ void Gui::ImGuiBackendNewFrame() {
             Metal_NewFrame(mImpl.Metal.Renderer);
             break;
 #endif
+        case WindowBackend::FAST3D_SDL_LLGL:
+            ImGui_ImplLLGL_NewFrame();
+            break;
         default:
             break;
     }

@@ -41,7 +41,6 @@ typedef struct {
         } Metal;
         struct {
             void* Window;
-            void* Context;
         } LLGL;
         struct {
             uint32_t Width;
