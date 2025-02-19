@@ -68,63 +68,6 @@ static void (*on_all_keys_up_callback)();
 static bool (*on_mouse_button_down_callback)(int btn);
 static bool (*on_mouse_button_up_callback)(int btn);
 
-class CustomSurface : public LLGL::Surface {
-    public:
-        // Constructor and destructor
-        CustomSurface(const LLGL::Extent2D& size, const char* title);
-        ~CustomSurface();
-        
-        // Interface implementation
-        bool GetNativeHandle(void* nativeHandle, std::size_t nativeHandleSize) override;
-        LLGL::Extent2D GetContentSize() const override;
-        bool AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) override;
-        void ResetPixelFormat() override;
-        LLGL::Display* FindResidentDisplay() const override;
-
-        LLGL::Extent2D size;
-    
-    private:
-        std::string    title_;
-};
-
-CustomSurface::CustomSurface(const LLGL::Extent2D& size, const char* title) :
-	title_ { title              },
-	size  { size               }
-{
-}
-
-CustomSurface::~CustomSurface() {
-}
-
-bool CustomSurface::GetNativeHandle(void* nativeHandle, std::size_t nativeHandleSize) {
-    SDL_SysWMinfo wmInfo;
-    SDL_VERSION(&wmInfo.version);
-    SDL_GetWindowWMInfo(wnd, &wmInfo);
-    auto* nativeHandlePtr = static_cast<LLGL::NativeHandle*>(nativeHandle);
-#ifdef __APPLE__
-   nativeHandlePtr->responder = wmInfo.info.cocoa.window;
-#else
-    nativeHandlePtr->display = wmInfo.info.x11.display;
-    nativeHandlePtr->window = wmInfo.info.x11.window;
-#endif
-    return true;
-}
-
-LLGL::Extent2D CustomSurface::GetContentSize() const {
-    return size;
-}
-
-bool CustomSurface::AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) {
-    return false;
-}
-
-void CustomSurface::ResetPixelFormat() {
-}
-
-LLGL::Display* CustomSurface::FindResidentDisplay() const {
-    return nullptr;
-}
-
 #ifdef _WIN32
 LONG_PTR SDL_WndProc;
 #endif
@@ -376,7 +319,7 @@ static LRESULT CALLBACK gfx_sdl_wnd_proc(HWND h_wnd, UINT message, WPARAM w_para
 };
 #endif
 
-static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, uint32_t width,
+static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, uint32_t width,
                          uint32_t height, int32_t posX, int32_t posY) {
     window_width = width;
     window_height = height;
@@ -393,7 +336,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
     bool use_llgl = strcmp(gfx_api_name, "LLGL") == 0;
-    bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0; // || (use_llgl && llgl_renderer->GetRendererID() == LLGL::RendererID::OpenGL);
+    bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0 || (use_llgl);
     bool use_metal = strcmp(gfx_api_name, "Metal") == 0;
 
     if (use_opengl) {
@@ -431,7 +374,7 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
     Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
 #endif
 
-    if (use_opengl || (use_llgl && llgl_renderer->GetRendererID() == LLGL::RendererID::OpenGL)) {
+    if (use_opengl) {
         flags = flags | SDL_WINDOW_OPENGL;
     } else if (use_metal) {
         flags = flags | SDL_WINDOW_METAL;
@@ -477,24 +420,12 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
         renderer = SDL_CreateRenderer(wnd, -1, flags);
         if (renderer == NULL) {
             SPDLOG_ERROR("Error creating renderer: {}", SDL_GetError());
-            return;
+            return window_impl;
         }
 
         SDL_GetRendererOutputSize(renderer, &window_width, &window_height);
         window_impl.Metal = { wnd, renderer };
     }
-
-    if (use_llgl) {
-        LLGL::SwapChainDescriptor swapChainDesc;
-        swapChainDesc.resolution = { window_width, window_height };
-        auto surface = std::make_shared<CustomSurface>(swapChainDesc.resolution, title);
-        llgl_swapChain = llgl_renderer->CreateSwapChain(swapChainDesc, surface);
-
-        llgl_cmdBuffer = llgl_renderer->CreateCommandBuffer(LLGL::CommandBufferFlags::ImmediateSubmit);
-        window_impl.LLGL = { wnd };
-    }
-
-    Ship::Context::GetInstance()->GetWindow()->GetGui()->Init(window_impl);
 
     for (size_t i = 0; i < sizeof(lus_to_sdl_table) / sizeof(SDL_Scancode); i++) {
         sdl_to_lus_table[lus_to_sdl_table[i]] = i;
@@ -508,6 +439,8 @@ static void gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool s
         sdl_to_lus_table[scancode_rmapping_nonextended[i][0]] = sdl_to_lus_table[scancode_rmapping_nonextended[i][1]];
         sdl_to_lus_table[scancode_rmapping_nonextended[i][1]] += 0x100;
     }
+
+    return window_impl;
 }
 
 static void gfx_sdl_set_fullscreen_changed_callback(void (*on_fullscreen_changed)(bool is_now_fullscreen)) {

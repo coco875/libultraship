@@ -309,6 +309,7 @@ void Gui::ImGuiBackendNewFrame() {
     switch (Context::GetInstance()->GetWindow()->GetWindowBackend()) {
 #ifdef ENABLE_OPENGL
         case WindowBackend::FAST3D_SDL_OPENGL:
+        case WindowBackend::FAST3D_SDL_LLGL:
             ImGui_ImplOpenGL3_NewFrame();
             break;
 #endif

@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <set>
 
+#include "window/gui/Gui.h"
+
 struct ShaderProgram;
 
 struct GfxClipParameters {
@@ -48,7 +50,7 @@ struct GfxRenderingAPI {
     void (*set_scissor)(int x, int y, int width, int height);
     void (*set_use_alpha)(bool use_alpha);
     void (*draw_triangles)(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris);
-    void (*init)();
+    void (*init)(Ship::GuiWindowInitData& init_data);
     void (*on_resize)();
     void (*start_frame)();
     void (*end_frame)();

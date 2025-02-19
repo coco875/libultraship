@@ -695,7 +695,7 @@ static void gfx_opengl_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_
     glDrawArrays(GL_TRIANGLES, 0, 3 * buf_vbo_num_tris);
 }
 
-static void gfx_opengl_init() {
+static void gfx_opengl_init(Ship::GuiWindowInitData& initdata) {
 #ifndef __linux__
     glewInit();
 #endif

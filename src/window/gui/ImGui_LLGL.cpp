@@ -5,6 +5,8 @@
 #include <LLGL/Backend/Direct3D11/NativeHandle.h>
 #endif
 #include <LLGL/Backend/OpenGL/NativeHandle.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_opengl3.h>
 
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl2.h>
@@ -24,7 +26,7 @@ void ImGui_ImplSDL2_LLGL(SDL_Window* window, void* context) {
     
 };
 
-void ImGui_ImplLLGL_Init(Ship::GuiWindowInitData window) {
+void ImGui_ImplLLGL_Init(Ship::GuiWindowInitData& mImpl) {
     switch (llgl_renderer->GetRendererID()) {
         #if defined(_WIN32)
         case LLGL::RendererID::Direct3D11:
@@ -51,17 +53,9 @@ void ImGui_ImplLLGL_Init(Ship::GuiWindowInitData window) {
             break;
         #endif
         case LLGL::RendererID::OpenGL:
-            #ifdef __APPLE__
-            void* nativeDeviceHandle;
-            llgl_renderer->GetNativeHandle(&nativeDeviceHandle, sizeof(nativeDeviceHandle));
-            glDevice = nativeDeviceHandle;
-
-            #else
-            LLGL::OpenGL::RenderSystemNativeHandle nativeDeviceHandle;
-            llgl_renderer->GetNativeHandle(&nativeDeviceHandle, sizeof(nativeDeviceHandle));
-            glDevice = nativeDeviceHandle.context;
-            #endif
-            ImGui_ImplSDL2_InitForOpenGL((SDL_Window*)window, nullptr);
+            SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+            SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+            ImGui_ImplSDL2_InitForOpenGL(static_cast<SDL_Window*>(mImpl.Opengl.Window), mImpl.Opengl.Context);
 #ifdef __APPLE__
             ImGui_ImplOpenGL3_Init("#version 410 core");
 #elif USE_OPENGLES

@@ -5,6 +5,7 @@
 #include "gfx_pc.h"
 #include <prism/processor.h>
 #include <LLGL/LLGL.h>
+#include <GL/glx.h>
 
 LLGL::RenderSystemPtr llgl_renderer;
 LLGL::SwapChain* llgl_swapChain;
@@ -71,9 +72,12 @@ void gfx_llgl_set_use_alpha(bool use_alpha) {
 void gfx_llgl_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris) {
 }
 
-void gfx_llgl_init(void) {
+void gfx_llgl_init(Ship::GuiWindowInitData& init_data) {
     LLGL::Report report;
-    llgl_renderer = LLGL::RenderSystem::Load("OpenGL", &report);
+    LLGL::RenderSystemDescriptor desc = {"OpenGL"};
+    desc.nativeHandle = init_data.Opengl.Context;
+    desc.nativeHandleSize = sizeof(GLXContext);
+    llgl_renderer = LLGL::RenderSystem::Load(desc, &report);
 
     if (!llgl_renderer) {
         auto a = report.GetText();
@@ -86,6 +90,12 @@ void gfx_llgl_init(void) {
             exit(1);
         }
     }
+
+    LLGL::SwapChainDescriptor swapChainDesc;
+    swapChainDesc.resolution = { 800, 400 };
+    llgl_swapChain = llgl_renderer->CreateSwapChain(swapChainDesc);
+
+    llgl_cmdBuffer = llgl_renderer->CreateCommandBuffer(LLGL::CommandBufferFlags::ImmediateSubmit);
 }
 
 void gfx_llgl_on_resize(void) {

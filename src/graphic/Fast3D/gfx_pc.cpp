@@ -4112,8 +4112,9 @@ void gfx_init(struct GfxWindowManagerAPI* wapi, struct GfxRenderingAPI* rapi, co
               bool start_in_fullscreen, uint32_t width, uint32_t height, uint32_t posX, uint32_t posY) {
     gfx_wapi = wapi;
     gfx_rapi = rapi;
-    gfx_rapi->init();
-    gfx_wapi->init(game_name, rapi->get_name(), start_in_fullscreen, width, height, posX, posY);
+    auto window_impl = gfx_wapi->init(game_name, rapi->get_name(), start_in_fullscreen, width, height, posX, posY);
+    gfx_rapi->init(window_impl);
+    Ship::Context::GetInstance()->GetWindow()->GetGui()->Init(window_impl);
     gfx_rapi->update_framebuffer_parameters(0, width, height, 1, false, true, true, true);
 #ifdef __APPLE__
     gfx_current_dimensions.internal_mul = 1;
