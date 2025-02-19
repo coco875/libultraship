@@ -7,6 +7,8 @@
 #include <LLGL/LLGL.h>
 #include <GL/glx.h>
 
+#include <LLGL/Backend/OpenGL/NativeHandle.h>
+
 LLGL::RenderSystemPtr llgl_renderer;
 LLGL::SwapChain* llgl_swapChain;
 LLGL::CommandBuffer* llgl_cmdBuffer;
@@ -75,8 +77,14 @@ void gfx_llgl_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo
 void gfx_llgl_init(Ship::GuiWindowInitData& init_data) {
     LLGL::Report report;
     LLGL::RenderSystemDescriptor desc = {"OpenGL"};
-    desc.nativeHandle = init_data.Opengl.Context;
-    desc.nativeHandleSize = sizeof(GLXContext);
+#ifndef __APPLE__
+    auto handle = LLGL::OpenGL::RenderSystemNativeHandle{(GLXContext) init_data.Opengl.Context};
+    desc.nativeHandle = (void*)&handle;
+    desc.nativeHandleSize = sizeof(LLGL::OpenGL::RenderSystemNativeHandle);
+#else
+    desc.nativeHandle = ctx;
+    desc.nativeHandleSize = sizeof(void*);
+#endif
     llgl_renderer = LLGL::RenderSystem::Load(desc, &report);
 
     if (!llgl_renderer) {
@@ -93,7 +101,7 @@ void gfx_llgl_init(Ship::GuiWindowInitData& init_data) {
 
     LLGL::SwapChainDescriptor swapChainDesc;
     swapChainDesc.resolution = { 800, 400 };
-    llgl_swapChain = llgl_renderer->CreateSwapChain(swapChainDesc);
+    llgl_swapChain = llgl_renderer->CreateSwapChain(swapChainDesc, init_data.LLGL.Window);
 
     llgl_cmdBuffer = llgl_renderer->CreateCommandBuffer(LLGL::CommandBufferFlags::ImmediateSubmit);
 }

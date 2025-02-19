@@ -324,7 +324,7 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     window_width = width;
     window_height = height;
 
-    // setenv("SDL_VIDEODRIVER", "x11", 1);
+    SDL_SetHint(SDL_HINT_VIDEODRIVER, "x11");
 
 #if SDL_VERSION_ATLEAST(2, 24, 0)
     /* fix DPI scaling issues on Windows */
@@ -425,6 +425,10 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
 
         SDL_GetRendererOutputSize(renderer, &window_width, &window_height);
         window_impl.Metal = { wnd, renderer };
+    }
+
+    if (use_llgl) {
+        window_impl.LLGL = { std::make_shared<Ship::CustomSurface>(wnd, LLGL::Extent2D{window_width, window_height}, title) };
     }
 
     for (size_t i = 0; i < sizeof(lus_to_sdl_table) / sizeof(SDL_Scancode); i++) {

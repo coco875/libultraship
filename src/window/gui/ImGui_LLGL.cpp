@@ -22,10 +22,6 @@ void* glDevice;
 GLXContext glDevice;
 #endif
 
-void ImGui_ImplSDL2_LLGL(SDL_Window* window, void* context) {
-    
-};
-
 void ImGui_ImplLLGL_Init(Ship::GuiWindowInitData& mImpl) {
     switch (llgl_renderer->GetRendererID()) {
         #if defined(_WIN32)

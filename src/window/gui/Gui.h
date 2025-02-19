@@ -22,31 +22,49 @@
 #include "resource/type/Texture.h"
 #include "window/gui/resource/GuiTexture.h"
 
+#include <LLGL/LLGL.h>
+
 namespace Ship {
 
+class CustomSurface final : public LLGL::Surface {
+public:
+    // Constructor and destructor
+    CustomSurface(SDL_Window* wnd, const LLGL::Extent2D& size, const char* title);
+    ~CustomSurface();
+    
+    // Interface implementation
+    bool GetNativeHandle(void* nativeHandle, std::size_t nativeHandleSize) override;
+    LLGL::Extent2D GetContentSize() const override;
+    bool AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) override;
+    LLGL::Display* FindResidentDisplay() const override;
+
+    SDL_Window*     wnd = nullptr;
+    LLGL::Extent2D  size;
+private:
+    std::string     title_;
+};
+
 typedef struct {
-    union {
-        struct {
-            void* Window;
-            void* DeviceContext;
-            void* Device;
-        } Dx11;
-        struct {
-            void* Window;
-            void* Context;
-        } Opengl;
-        struct {
-            void* Window;
-            SDL_Renderer* Renderer;
-        } Metal;
-        struct {
-            void* Window;
-        } LLGL;
-        struct {
-            uint32_t Width;
-            uint32_t Height;
-        } Gx2;
-    };
+    struct {
+        void* Window;
+        void* DeviceContext;
+        void* Device;
+    } Dx11;
+    struct {
+        void* Window;
+        void* Context;
+    } Opengl;
+    struct {
+        void* Window;
+        SDL_Renderer* Renderer;
+    } Metal;
+    struct {
+        std::shared_ptr<CustomSurface> Window = nullptr;
+    } LLGL;
+    struct {
+        uint32_t Width;
+        uint32_t Height;
+    } Gx2;
 } GuiWindowInitData;
 
 typedef union {
@@ -136,6 +154,7 @@ class Gui {
     std::map<std::string, std::shared_ptr<GuiWindow>> mGuiWindows;
     ImVec2 mTemporaryWindowPos;
 };
+
 } // namespace Ship
 
 #endif
