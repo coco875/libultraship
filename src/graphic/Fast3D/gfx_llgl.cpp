@@ -92,12 +92,20 @@ void gfx_llgl_on_resize(void) {
 }
 
 void gfx_llgl_start_frame(void) {
+    llgl_cmdBuffer->Begin();
+    llgl_cmdBuffer->BeginRenderPass(*llgl_swapChain);
 }
 
 void gfx_llgl_end_frame(void) {
+    // llgl_cmdBuffer->EndRenderPass();
+    // llgl_cmdBuffer->End();
+    // llgl_swapChain->Present();
 }
 
 void gfx_llgl_finish_render(void) {
+    llgl_cmdBuffer->EndRenderPass();
+    llgl_cmdBuffer->End();
+    llgl_swapChain->Present();
 }
 
 int gfx_llgl_create_framebuffer(void) {
@@ -116,6 +124,7 @@ void gfx_llgl_copy_framebuffer(int fb_dst_id, int fb_src_id, int srcX0, int srcY
 }
 
 void gfx_llgl_clear_framebuffer(bool color, bool depth) {
+    llgl_cmdBuffer->Clear(LLGL::ClearFlags::Color, LLGL::ClearValue{ 0.0f, 0.0f, 0.0f, 1.0f });
 }
 
 void gfx_llgl_read_framebuffer_to_cpu(int fb_id, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {

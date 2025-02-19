@@ -207,7 +207,7 @@ void Gui::ImGuiBackendInit() {
             break;
 #endif
         case WindowBackend::FAST3D_SDL_LLGL:
-            ImGui_ImplLLGL_Init(mImpl.LLGL.Window);
+            ImGui_ImplLLGL_Init(mImpl);
             break;
         default:
             break;
@@ -251,7 +251,6 @@ bool Gui::SupportsViewports() {
             return true;
         case WindowBackend::FAST3D_SDL_OPENGL:
         case WindowBackend::FAST3D_SDL_METAL:
-        case WindowBackend::FAST3D_SDL_LLGL:
             return true;
         default:
             return false;

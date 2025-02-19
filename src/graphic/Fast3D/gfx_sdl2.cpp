@@ -80,18 +80,16 @@ class CustomSurface : public LLGL::Surface {
         bool AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) override;
         void ResetPixelFormat() override;
         LLGL::Display* FindResidentDisplay() const override;
-        
-        // Additional class functions
-        void PollEvents();
+
+        LLGL::Extent2D size;
     
     private:
         std::string    title_;
-        LLGL::Extent2D size_;
 };
 
 CustomSurface::CustomSurface(const LLGL::Extent2D& size, const char* title) :
 	title_ { title              },
-	size_  { size               }
+	size  { size               }
 {
 }
 
@@ -108,13 +106,12 @@ bool CustomSurface::GetNativeHandle(void* nativeHandle, std::size_t nativeHandle
 #else
     nativeHandlePtr->display = wmInfo.info.x11.display;
     nativeHandlePtr->window = wmInfo.info.x11.window;
-    nativeHandlePtr->visual;
 #endif
     return true;
 }
 
 LLGL::Extent2D CustomSurface::GetContentSize() const {
-    return size_;
+    return size;
 }
 
 bool CustomSurface::AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) {
@@ -126,9 +123,6 @@ void CustomSurface::ResetPixelFormat() {
 
 LLGL::Display* CustomSurface::FindResidentDisplay() const {
     return nullptr;
-}
-
-void CustomSurface::PollEvents() {
 }
 
 #ifdef _WIN32
@@ -654,6 +648,7 @@ static void gfx_sdl_handle_single_event(SDL_Event& event) {
             switch (event.window.event) {
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                     SDL_GL_GetDrawableSize(wnd, &window_width, &window_height);
+                    llgl_swapChain->ResizeBuffers({ window_width, window_height });
                     break;
                 case SDL_WINDOWEVENT_CLOSE:
                     if (event.window.windowID == SDL_GetWindowID(wnd)) {

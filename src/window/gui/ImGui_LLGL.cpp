@@ -24,7 +24,7 @@ void ImGui_ImplSDL2_LLGL(SDL_Window* window, void* context) {
     
 };
 
-void ImGui_ImplLLGL_Init(void* window) {
+void ImGui_ImplLLGL_Init(Ship::GuiWindowInitData window) {
     switch (llgl_renderer->GetRendererID()) {
         #if defined(_WIN32)
         case LLGL::RendererID::Direct3D11:
