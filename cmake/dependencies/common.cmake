@@ -138,7 +138,7 @@ set(llgl_apply_patch_if_needed git apply ${llgl_patch_file} ${git_hide_output} |
 FetchContent_Declare(
     llgl
     GIT_REPOSITORY https://github.com/LukasBanana/LLGL.git
-    GIT_TAG 918bc0596e82e8376a4cac8f7d0c4ce5cd9fbd90
+    GIT_TAG 250eb8336e347dda4410921d48d525dea395962d
     PATCH_COMMAND ${llgl_apply_patch_if_needed}
 )
 FetchContent_MakeAvailable(llgl)
