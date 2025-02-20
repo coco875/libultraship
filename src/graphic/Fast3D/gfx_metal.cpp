@@ -277,7 +277,7 @@ static int gfx_metal_get_max_texture_size() {
 // Forward declare this method
 int gfx_metal_create_framebuffer();
 
-static void gfx_metal_init() {
+static void gfx_metal_init(Ship::GuiWindowInitData& data) {
     // Create the default framebuffer which represents the window
     FramebufferMetal& fb = mctx.framebuffers[gfx_metal_create_framebuffer()];
     fb.msaa_level = 1;

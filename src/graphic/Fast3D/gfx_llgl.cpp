@@ -5,7 +5,9 @@
 #include "gfx_pc.h"
 #include <prism/processor.h>
 #include <LLGL/LLGL.h>
+#ifndef __APPLE__
 #include <GL/glx.h>
+#endif
 
 #include <LLGL/Backend/OpenGL/NativeHandle.h>
 
@@ -82,7 +84,7 @@ void gfx_llgl_init(Ship::GuiWindowInitData& init_data) {
     desc.nativeHandle = (void*)&handle;
     desc.nativeHandleSize = sizeof(LLGL::OpenGL::RenderSystemNativeHandle);
 #else
-    desc.nativeHandle = ctx;
+    desc.nativeHandle = init_data.Opengl.Context;
     desc.nativeHandleSize = sizeof(void*);
 #endif
     llgl_renderer = LLGL::RenderSystem::Load(desc, &report);

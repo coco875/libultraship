@@ -324,7 +324,9 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     window_width = width;
     window_height = height;
 
+#ifndef __APPLE__
     SDL_SetHint(SDL_HINT_VIDEODRIVER, "x11");
+#endif
 
 #if SDL_VERSION_ATLEAST(2, 24, 0)
     /* fix DPI scaling issues on Windows */
@@ -346,8 +348,6 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     } else if (use_metal) {
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
     }
-
-    SDL_SetHint(SDL_HINT_VIDEODRIVER, "x11");
 
 #if defined(__APPLE__)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
