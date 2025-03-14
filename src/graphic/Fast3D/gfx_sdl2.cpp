@@ -341,6 +341,17 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0;
     bool use_metal = strcmp(gfx_api_name, "Metal") == 0;
 
+    char title[512];
+    int len = sprintf(title, "%s (%s)", game_name, gfx_api_name);
+
+    Ship::GuiWindowInitData window_impl;
+
+    if (use_llgl) {
+        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, LLGL::RendererID::Metal, window_impl.LLGL.desc), window_impl.LLGL.desc };
+        wnd = window_impl.LLGL.Window->wnd;
+        return window_impl;
+    }
+
     if (use_opengl) {
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -364,17 +375,6 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
         timer = CreateWaitableTimer(nullptr, false, nullptr);
     }
 #endif
-
-    char title[512];
-    int len = sprintf(title, "%s (%s)", game_name, gfx_api_name);
-
-    Ship::GuiWindowInitData window_impl;
-
-    if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, LLGL::RendererID::Metal, window_impl.LLGL.desc), window_impl.LLGL.desc };
-        wnd = window_impl.LLGL.Window->wnd;
-        return window_impl;
-    }
 
 #ifdef __IOS__
     Uint32 flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN;
