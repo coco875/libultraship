@@ -1,4 +1,3 @@
-#include "window/Window.h"
 #ifdef ENABLE_OPENGL
 
 #include <stdint.h>
@@ -38,6 +37,8 @@
 #define GL_GLEXT_PROTOTYPES 1
 #include <SDL2/SDL_opengl.h>
 #endif
+
+#include "window/Window.h"
 
 #include "gfx_cc.h"
 #include "gfx_rendering_api.h"

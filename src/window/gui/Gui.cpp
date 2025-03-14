@@ -43,10 +43,10 @@
 #endif
 
 #include "ImGui_LLGL.h"
+#include "graphic/Fast3D/gfx_llgl.h"
 
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_syswm.h>
-#include <LLGL/Platform/NativeHandle.h>
 
 #if defined(ENABLE_DX11) || defined(ENABLE_DX12)
 #include <graphic/Fast3D/gfx_direct3d11.h>
@@ -180,7 +180,7 @@ void Gui::ImGuiWMInit() {
             break;
 #endif
 case WindowBackend::FAST3D_SDL_LLGL:
-            InitImGui(mImpl.LLGL.Window.wnd, llgl_render, llgl_swapChain);
+            InitImGui(mImpl.LLGL.Window->wnd, llgl_renderer, llgl_swapChain);
             break;
         default:
             break;

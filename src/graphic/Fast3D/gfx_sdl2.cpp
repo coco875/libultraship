@@ -338,7 +338,7 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
 
     bool use_llgl = strcmp(gfx_api_name, "LLGL") == 0;
-    bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0 || (use_llgl);
+    bool use_opengl = strcmp(gfx_api_name, "OpenGL") == 0;
     bool use_metal = strcmp(gfx_api_name, "Metal") == 0;
 
     if (use_opengl) {
@@ -428,7 +428,7 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     }
 
     if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<Ship::CustomSurface>(wnd, LLGL::Extent2D{window_width, window_height}, title) };
+        window_impl.LLGL = { std::make_shared<SDLSurface>(wnd, LLGL::Extent2D{window_width, window_height}, title) };
     }
 
     for (size_t i = 0; i < sizeof(lus_to_sdl_table) / sizeof(SDL_Scancode); i++) {
