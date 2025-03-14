@@ -342,12 +342,12 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     bool use_metal = strcmp(gfx_api_name, "Metal") == 0;
 
     char title[512];
-    int len = sprintf(title, "%s (%s)", game_name, gfx_api_name);
+    int len = snprintf(title, 512, "%s (%s)", game_name, gfx_api_name);
 
     Ship::GuiWindowInitData window_impl;
 
     if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, LLGL::RendererID::Metal, window_impl.LLGL.desc), window_impl.LLGL.desc };
+        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, LLGL::RendererID::OpenGL, window_impl.LLGL.desc), window_impl.LLGL.desc };
         wnd = window_impl.LLGL.Window->wnd;
         return window_impl;
     }
