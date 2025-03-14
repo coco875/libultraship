@@ -62,42 +62,6 @@ namespace Ship {
 #define TOGGLE_BTN ImGuiKey_F1
 #define TOGGLE_PAD_BTN ImGuiKey_GamepadBack
 
-CustomSurface::CustomSurface(SDL_Window* wnd, const LLGL::Extent2D& size, const char* title) :
-    wnd   { wnd                },
-    title_ { title              },
-	size  { size               }
-{
-}
-
-CustomSurface::~CustomSurface() {
-}
-
-bool CustomSurface::GetNativeHandle(void* nativeHandle, std::size_t nativeHandleSize) {
-    SDL_SysWMinfo wmInfo;
-    SDL_VERSION(&wmInfo.version);
-    SDL_GetWindowWMInfo(wnd, &wmInfo);
-    auto* nativeHandlePtr = static_cast<LLGL::NativeHandle*>(nativeHandle);
-#ifdef __APPLE__
-    nativeHandlePtr->responder = wmInfo.info.cocoa.window;
-#else
-    nativeHandlePtr->display = wmInfo.info.x11.display;
-    nativeHandlePtr->window = wmInfo.info.x11.window;
-#endif
-    return true;
-}
-
-LLGL::Extent2D CustomSurface::GetContentSize() const {
-    return size;
-}
-
-bool CustomSurface::AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) {
-    return false;
-}
-
-LLGL::Display* CustomSurface::FindResidentDisplay() const {
-    return nullptr;
-}
-
 Gui::Gui(std::vector<std::shared_ptr<GuiWindow>> guiWindows) : mNeedsConsoleVariableSave(false) {
     mGameOverlay = std::make_shared<GameOverlay>();
 

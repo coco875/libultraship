@@ -24,26 +24,9 @@
 
 #include <LLGL/LLGL.h>
 
+#include "sdl_llgl.h"
+
 namespace Ship {
-
-class CustomSurface final : public LLGL::Surface {
-public:
-    // Constructor and destructor
-    CustomSurface(SDL_Window* wnd, const LLGL::Extent2D& size, const char* title);
-    ~CustomSurface();
-    
-    // Interface implementation
-    bool GetNativeHandle(void* nativeHandle, std::size_t nativeHandleSize) override;
-    LLGL::Extent2D GetContentSize() const override;
-    bool AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) override;
-    LLGL::Display* FindResidentDisplay() const override;
-
-    SDL_Window*     wnd = nullptr;
-    LLGL::Extent2D  size;
-private:
-    std::string     title_;
-};
-
 typedef struct {
     struct {
         void* Window;
@@ -59,7 +42,7 @@ typedef struct {
         SDL_Renderer* Renderer;
     } Metal;
     struct {
-        std::shared_ptr<CustomSurface> Window = nullptr;
+        std::shared_ptr<SDLSurface> Window = nullptr;
     } LLGL;
     struct {
         uint32_t Width;

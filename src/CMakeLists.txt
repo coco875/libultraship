@@ -87,6 +87,11 @@ target_sources(libultraship PRIVATE ${Source_Files__Window})
 
 file(GLOB_RECURSE Source_Files__Window__Gui RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "window/gui/*.h" "window/gui/*.cpp")
 
+if(APPLE)
+    file(GLOB Source_Files__Window__Gui__Apple RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "window/gui/*.mm")
+    list(APPEND Source_Files__Window__Gui ${Source_Files__Window__Gui__Apple})
+endif()
+
 source_group("window/gui" FILES ${Source_Files__Window__Gui})
 target_sources(libultraship PRIVATE ${Source_Files__Window__Gui})
 
