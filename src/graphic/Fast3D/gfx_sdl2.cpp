@@ -368,6 +368,10 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     char title[512];
     int len = sprintf(title, "%s (%s)", game_name, gfx_api_name);
 
+    if (use_llgl) {
+        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, LLGL::RendererID::Metal, ) };
+    }
+
 #ifdef __IOS__
     Uint32 flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN;
 #else
@@ -425,10 +429,6 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
 
         SDL_GetRendererOutputSize(renderer, &window_width, &window_height);
         window_impl.Metal = { wnd, renderer };
-    }
-
-    if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<SDLSurface>(wnd, LLGL::Extent2D{window_width, window_height}, title) };
     }
 
     for (size_t i = 0; i < sizeof(lus_to_sdl_table) / sizeof(SDL_Scancode); i++) {
