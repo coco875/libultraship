@@ -179,6 +179,9 @@ void Gui::ImGuiWMInit() {
             ImGui_ImplWin32_Init(mImpl.Dx11.Window);
             break;
 #endif
+case WindowBackend::FAST3D_SDL_LLGL:
+            InitImGui(mImpl.LLGL.Window.wnd, llgl_render, llgl_swapChain);
+            break;
         default:
             break;
     }
@@ -210,9 +213,6 @@ void Gui::ImGuiBackendInit() {
                                 static_cast<ID3D11DeviceContext*>(mImpl.Dx11.DeviceContext));
             break;
 #endif
-        case WindowBackend::FAST3D_SDL_LLGL:
-            ImGui_ImplLLGL_Init(mImpl);
-            break;
         default:
             break;
     }
