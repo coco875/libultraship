@@ -67,11 +67,3 @@ void Imgui_Metal_llgl_RenderDrawData(ImDrawData* data) {
     [mtlRenderPassDesc release];
     [mtlCommandBuffer release];
 }
-
-extern "C" float Imgui_Metal_llgl_GetContentScale(NSWindow *wnd_) {
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_12 
-    return [wnd_ backingScaleFactor]; 
-#else 
-    return 1.0; 
-#endif 
-}

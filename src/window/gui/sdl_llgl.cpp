@@ -106,31 +106,3 @@ bool SDLSurface::AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen)
 LLGL::Display* SDLSurface::FindResidentDisplay() const {
     return nullptr;
 }
-
-bool SDLSurface::ProcessEvents(LLGL::SwapChain* swapChain) {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            return false;
-        }
-        if (event.type == SDL_WINDOWEVENT &&
-            (event.window.event == SDL_WINDOWEVENT_RESIZED || event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)) {
-            uint32_t width = event.window.data1;
-            uint32_t height = event.window.data2;
-#ifdef __APPLE__
-            if (wnd) {
-                SDL_SysWMinfo wmInfo;
-                SDL_VERSION(&wmInfo.version);
-                SDL_GetWindowWMInfo(wnd, &wmInfo);
-                float scale = Imgui_Metal_llgl_GetContentScale(wmInfo.info.cocoa.window);
-                width *= scale;
-                height *= scale;
-            }
-#endif
-            size = { width, height };
-            swapChain->ResizeBuffers(size);
-        }
-        ImGui_ImplSDL2_ProcessEvent(&event);
-    }
-    return true;
-}

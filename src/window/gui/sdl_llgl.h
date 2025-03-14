@@ -7,10 +7,6 @@
 #define GL_GLEXT_PROTOTYPES 1
 #include <SDL2/SDL_opengl.h>
 
-#ifdef __APPLE__
-extern "C" float Imgui_Metal_llgl_GetContentScale(NSWindow* wnd_);
-#endif
-
 class SDLSurface final : public LLGL::Surface {
   public:
     // Constructor and destructor
@@ -22,7 +18,6 @@ class SDLSurface final : public LLGL::Surface {
     LLGL::Extent2D GetContentSize() const override;
     bool AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) override;
     LLGL::Display* FindResidentDisplay() const override;
-    bool ProcessEvents(LLGL::SwapChain* swapChain);
 
     SDL_Window* wnd = nullptr;
     LLGL::Extent2D size;
