@@ -4,20 +4,19 @@
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
+#ifdef LLGL_BUILD_RENDERER_VULKAN
 #include "imgui_impl_vulkan.h"
+#include <LLGL/Backend/Vulkan/NativeHandle.h>
+#endif
 #ifdef __APPLE__
 #include "imgui_impl_metal.h"
+#include <LLGL/Backend/Metal/NativeHandle.h>
 #endif
 #ifdef WIN32
 #include "imgui_impl_dx11.h"
 #endif
 
 #include <LLGL/Backend/OpenGL/NativeHandle.h>
-#include <LLGL/Backend/Vulkan/NativeHandle.h>
-#ifdef __APPLE__
-#include <LLGL/Backend/Metal/NativeHandle.h>
-#endif
-
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_syswm.h>
 
@@ -29,6 +28,7 @@ ID3D11Device* d3dDevice = nullptr;
 ID3D11DeviceContext* d3dDeviceContext = nullptr;
 #endif
 
+#ifdef LLGL_BUILD_RENDERER_VULKAN
 static VkFormat GetVulkanColorFormat(LLGL::Format format) {
     return (format == LLGL::Format::BGRA8UNorm ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_R8G8B8A8_UNORM);
 }
@@ -104,6 +104,8 @@ static VkRenderPass CreateVulkanRenderPass(VkDevice vulkanDevice, LLGL::SwapChai
     return vulkanRenderPass;
 }
 
+#endif
+
 void InitImGui(SDLSurface& wnd, LLGL::RenderSystemPtr& renderer, LLGL::SwapChain* swapChain) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -150,6 +152,7 @@ void InitImGui(SDLSurface& wnd, LLGL::RenderSystemPtr& renderer, LLGL::SwapChain
             ImGui_ImplDX11_Init(d3dDevice, d3dDeviceContext);
             break;
 #endif
+#ifdef LLGL_BUILD_RENDERER_VULKAN
         case LLGL::RendererID::Vulkan: {
             ImGui_ImplSDL2_InitForVulkan(wnd.wnd);
             LLGL::Vulkan::RenderSystemNativeHandle instance;
@@ -176,6 +179,7 @@ void InitImGui(SDLSurface& wnd, LLGL::RenderSystemPtr& renderer, LLGL::SwapChain
             ImGui_ImplVulkan_Init(&initInfo);
             break;
         }
+#endif
         default:
             io.BackendRendererName = "imgui_impl_null";
             break;
@@ -201,9 +205,11 @@ void NewFrameImGui(LLGL::RenderSystemPtr& renderer, LLGL::CommandBuffer* cmdBuff
             ImGui_ImplDX11_NewFrame();
             break;
 #endif
+#ifdef LLGL_BUILD_RENDERER_VULKAN
         case LLGL::RendererID::Vulkan:
             ImGui_ImplVulkan_NewFrame();
             break;
+#endif
         default:
             break;
     }
@@ -228,12 +234,14 @@ void RenderImGui(ImDrawData* data, LLGL::RenderSystemPtr& renderer, LLGL::Comman
             ImGui_ImplDX11_RenderDrawData(data);
             break;
 #endif
+#ifdef LLGL_BUILD_RENDERER_VULKAN
         case LLGL::RendererID::Vulkan: {
             LLGL::Vulkan::CommandBufferNativeHandle cmdBuffer;
             llgl_cmdBuffer->GetNativeHandle(&cmdBuffer, sizeof(LLGL::Vulkan::CommandBufferNativeHandle));
             ImGui_ImplVulkan_RenderDrawData(data, cmdBuffer.commandBuffer);
             break;
         }
+#endif
         default:
             break;
     }
@@ -275,9 +283,11 @@ void ShutdownImGui(LLGL::RenderSystemPtr& renderer) {
             ImGui_ImplDX11_Shutdown();
             break;
 #endif
+#ifdef LLGL_BUILD_RENDERER_VULKAN
         case LLGL::RendererID::Vulkan:
             ImGui_ImplVulkan_Shutdown();
             break;
+#endif
         default:
             break;
     }

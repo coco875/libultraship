@@ -1,6 +1,7 @@
 include(FetchContent)
 
 find_package(OpenGL QUIET)
+find_package(Vulkan QUIET)
 
 # When using the Visual Studio generator, it is necessary to suppress stderr output entirely so it does not interrupt the patch command.
 # Redirecting to nul is used here instead of the `--quiet` flag, as that flag was only recently introduced in git 2.25.0 (Jan 2022)
@@ -38,8 +39,15 @@ target_sources(ImGui
     PRIVATE
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
+
+if(Vulkan_FOUND)
+    target_sources(ImGui
+        PRIVATE
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+    )
+endif()
+
 
 target_include_directories(ImGui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends PRIVATE ${SDL2_INCLUDE_DIRS})
 
@@ -128,7 +136,6 @@ set(LLGL_BUILD_RENDERER_OPENGL ON)
 set(LLGL_GL_ENABLE_DSA_EXT ON)
 set(LLGL_GL_ENABLE_VENDOR_EXT ON)
 set(LLGL_GL_INCLUDE_EXTERNAL ON)
-find_package(Vulkan QUIET)
 if (Vulkan_FOUND)
 set(LLGL_BUILD_RENDERER_VULKAN ON)
 else()
