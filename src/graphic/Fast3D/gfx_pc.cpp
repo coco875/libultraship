@@ -4244,6 +4244,7 @@ void gfx_start_frame() {
     }
 
     fbActive = 0;
+    gfx_rapi->start_frame();
 }
 
 GfxExecStack g_exec_stack = {};
@@ -4259,7 +4260,6 @@ void gfx_run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_replacemen
     gfx_rapi->update_framebuffer_parameters(0, gfx_current_window_dimensions.width,
                                             gfx_current_window_dimensions.height, 1, false, true, true,
                                             !game_renders_to_framebuffer);
-    gfx_rapi->start_frame();
     gfx_rapi->start_draw_to_framebuffer(game_renders_to_framebuffer ? game_framebuffer : 0,
                                         (float)gfx_current_dimensions.height / gfx_native_dimensions.height);
     gfx_rapi->clear_framebuffer(false, true);

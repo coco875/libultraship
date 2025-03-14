@@ -226,6 +226,14 @@ endif()
 target_link_libraries(libultraship PUBLIC prism)
 target_link_libraries(libultraship PUBLIC LLGL)
 
+find_package(Vulkan REQUIRED)
+if(Vulkan_FOUND)
+    include_directories(${Vulkan_INCLUDE_DIR})
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${Vulkan_LIBRARY})
+else()
+    message(FATAL_ERROR "LLGL_BUILD_RENDERER_VULKAN failed: missing Vulkan libraries")
+endif()
+
 #=================== Compile Options & Defs ===================
 
 target_compile_definitions(libultraship PRIVATE ${GBI_UCODE})

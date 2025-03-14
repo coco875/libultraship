@@ -78,25 +78,17 @@ void gfx_llgl_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo
 
 void gfx_llgl_init(Ship::GuiWindowInitData& init_data) {
     LLGL::Report report;
-    LLGL::RenderSystemDescriptor desc = {"OpenGL"};
-#ifndef __APPLE__
-    auto handle = LLGL::OpenGL::RenderSystemNativeHandle{(GLXContext) init_data.Opengl.Context};
-    desc.nativeHandle = (void*)&handle;
-    desc.nativeHandleSize = sizeof(LLGL::OpenGL::RenderSystemNativeHandle);
-#else
-    desc.nativeHandle = init_data.Opengl.Context;
-    desc.nativeHandleSize = sizeof(void*);
-#endif
-    llgl_renderer = LLGL::RenderSystem::Load(desc, &report);
+
+    llgl_renderer = LLGL::RenderSystem::Load(init_data.LLGL.desc, &report);
 
     if (!llgl_renderer) {
         auto a = report.GetText();
         SPDLOG_ERROR("Failed to load \"%s\" module. Falling back to \"Null\" device.\n", "OpenGL");
-        SPDLOG_ERROR("Reason for failure: %s", report.HasErrors() ? report.GetText() : "Unknown\n");
+        printf("Reason for failure: %s", report.HasErrors() ? report.GetText() : "Unknown\n");
         llgl_renderer = LLGL::RenderSystem::Load("Null");
         if (!llgl_renderer)
         {
-            SPDLOG_ERROR("Failed to load \"Null\" module. Exiting.\n");
+            SPDLOG_CRITICAL("Failed to load \"Null\" module. Exiting.\n");
             exit(1);
         }
     }
@@ -144,7 +136,7 @@ void gfx_llgl_copy_framebuffer(int fb_dst_id, int fb_src_id, int srcX0, int srcY
 }
 
 void gfx_llgl_clear_framebuffer(bool color, bool depth) {
-    llgl_cmdBuffer->Clear(LLGL::ClearFlags::Color, LLGL::ClearValue{ 0.0f, 0.0f, 0.0f, 1.0f });
+    // llgl_cmdBuffer->Clear(LLGL::ClearFlags::Color, LLGL::ClearValue{ 0.0f, 0.0f, 0.0f, 1.0f });
 }
 
 void gfx_llgl_read_framebuffer_to_cpu(int fb_id, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {

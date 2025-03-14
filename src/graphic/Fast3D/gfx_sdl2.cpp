@@ -368,8 +368,12 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     char title[512];
     int len = sprintf(title, "%s (%s)", game_name, gfx_api_name);
 
+    Ship::GuiWindowInitData window_impl;
+
     if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, LLGL::RendererID::Metal, ) };
+        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, LLGL::RendererID::Metal, window_impl.LLGL.desc), window_impl.LLGL.desc };
+        wnd = window_impl.LLGL.Window->wnd;
+        return window_impl;
     }
 
 #ifdef __IOS__
@@ -394,7 +398,6 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     HWND hwnd = wmInfo.info.win.window;
     SDL_WndProc = SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)gfx_sdl_wnd_proc);
 #endif
-    Ship::GuiWindowInitData window_impl;
 
     int display_in_use = SDL_GetWindowDisplayIndex(wnd);
     if (display_in_use < 0) { // Fallback to default if out of bounds
@@ -588,6 +591,7 @@ static void gfx_sdl_handle_single_event(SDL_Event& event) {
         case SDL_WINDOWEVENT:
             switch (event.window.event) {
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
+                case SDL_WINDOWEVENT_RESIZED:
 #ifdef __APPLE__
                     SDL_GetWindowSize(wnd, &window_width, &window_height);
 #else

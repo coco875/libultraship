@@ -43,6 +43,7 @@ typedef struct {
     } Metal;
     struct {
         std::shared_ptr<SDLSurface> Window = nullptr;
+        LLGL::RenderSystemDescriptor desc;
     } LLGL;
     struct {
         uint32_t Width;

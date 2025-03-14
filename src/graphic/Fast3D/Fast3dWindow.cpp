@@ -174,10 +174,11 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
     }
 
     auto gui = wnd->GetGui();
-    // Setup of the backend frames and draw initial Window and GUI menus
-    gui->StartDraw();
+    
     // Setup game framebuffers to match available window space
     gfx_start_frame();
+    // Setup of the backend frames and draw initial Window and GUI menus
+    gui->StartDraw();
     // Execute the games gfx commands
     gfx_run(commands, mtxReplacements);
     // Renders the game frame buffer to the final window and finishes the GUI

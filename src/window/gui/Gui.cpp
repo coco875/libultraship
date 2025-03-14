@@ -180,7 +180,7 @@ void Gui::ImGuiWMInit() {
             break;
 #endif
 case WindowBackend::FAST3D_SDL_LLGL:
-            InitImGui(mImpl.LLGL.Window->wnd, llgl_renderer, llgl_swapChain);
+            InitImGui(*mImpl.LLGL.Window, llgl_renderer, llgl_swapChain);
             break;
         default:
             break;
@@ -329,7 +329,7 @@ void Gui::ImGuiBackendNewFrame() {
             break;
 #endif
         case WindowBackend::FAST3D_SDL_LLGL:
-            ImGui_ImplLLGL_NewFrame();
+            NewFrameImGui(llgl_renderer, llgl_cmdBuffer);
             break;
         default:
             break;
@@ -340,7 +340,6 @@ void Gui::ImGuiWMNewFrame() {
     switch (Context::GetInstance()->GetWindow()->GetWindowBackend()) {
         case WindowBackend::FAST3D_SDL_OPENGL:
         case WindowBackend::FAST3D_SDL_METAL:
-        case WindowBackend::FAST3D_SDL_LLGL:
             ImGui_ImplSDL2_NewFrame();
             break;
 #ifdef ENABLE_DX11
@@ -770,7 +769,6 @@ void Gui::ImGuiRenderDrawData(ImDrawData* data) {
 
 #ifdef ENABLE_OPENGL
         case WindowBackend::FAST3D_SDL_OPENGL:
-        case WindowBackend::FAST3D_SDL_LLGL:
             ImGui_ImplOpenGL3_RenderDrawData(data);
             break;
 #endif
@@ -786,6 +784,9 @@ void Gui::ImGuiRenderDrawData(ImDrawData* data) {
             ImGui_ImplDX11_RenderDrawData(data);
             break;
 #endif
+        case WindowBackend::FAST3D_SDL_LLGL:
+            RenderImGui(data, llgl_renderer, llgl_cmdBuffer);
+            break;
         default:
             break;
     }

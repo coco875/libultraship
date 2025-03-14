@@ -38,6 +38,7 @@ target_sources(ImGui
     PRIVATE
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 
 target_include_directories(ImGui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends PRIVATE ${SDL2_INCLUDE_DIRS})
@@ -127,6 +128,7 @@ set(LLGL_BUILD_RENDERER_OPENGL ON)
 set(LLGL_GL_ENABLE_DSA_EXT ON)
 set(LLGL_GL_ENABLE_VENDOR_EXT ON)
 set(LLGL_GL_INCLUDE_EXTERNAL ON)
+set(LLGL_BUILD_RENDERER_VULKAN ON)
 
 set(LLGL_OUTPUT_DIR ${CMAKE_BINARY_DIR})
 

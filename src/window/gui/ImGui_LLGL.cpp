@@ -182,7 +182,7 @@ void InitImGui(SDLSurface& wnd, LLGL::RenderSystemPtr& renderer, LLGL::SwapChain
     }
 }
 
-void NewFrameImGui(LLGL::CommandBuffer* cmdBuffer, LLGL::RenderSystemPtr& renderer) {
+void NewFrameImGui(LLGL::RenderSystemPtr& renderer, LLGL::CommandBuffer* cmdBuffer) {
     ImGui_ImplSDL2_NewFrame();
     switch (renderer->GetRendererID()) {
         case LLGL::RendererID::OpenGL:
@@ -207,33 +207,31 @@ void NewFrameImGui(LLGL::CommandBuffer* cmdBuffer, LLGL::RenderSystemPtr& render
         default:
             break;
     }
-    ImGui::NewFrame();
 }
 
-void RenderImGui(LLGL::RenderSystemPtr& renderer, LLGL::CommandBuffer* llgl_cmdBuffer) {
-    ImGui::Render();
+void RenderImGui(ImDrawData* data, LLGL::RenderSystemPtr& renderer, LLGL::CommandBuffer* llgl_cmdBuffer) {
     switch (renderer->GetRendererID()) {
         case LLGL::RendererID::OpenGL:
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            ImGui_ImplOpenGL3_RenderDrawData(data);
             break;
         case LLGL::RendererID::OpenGLES:
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            ImGui_ImplOpenGL3_RenderDrawData(data);
             break;
 #ifdef __APPLE__
         case LLGL::RendererID::Metal: {
-            Imgui_Metal_llgl_RenderDrawData(ImGui::GetDrawData());
+            Imgui_Metal_llgl_RenderDrawData(data);
             break;
         }
 #endif
 #ifdef WIN32
         case LLGL::RendererID::Direct3D11:
-            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+            ImGui_ImplDX11_RenderDrawData(data);
             break;
 #endif
         case LLGL::RendererID::Vulkan: {
             LLGL::Vulkan::CommandBufferNativeHandle cmdBuffer;
             llgl_cmdBuffer->GetNativeHandle(&cmdBuffer, sizeof(LLGL::Vulkan::CommandBufferNativeHandle));
-            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuffer.commandBuffer);
+            ImGui_ImplVulkan_RenderDrawData(data, cmdBuffer.commandBuffer);
             break;
         }
         default:
