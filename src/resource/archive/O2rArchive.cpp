@@ -11,13 +11,13 @@ O2rArchive::~O2rArchive() {
     SPDLOG_TRACE("destruct o2rarchive: {}", GetPath());
 }
 
-std::shared_ptr<File> O2rArchive::LoadFileRaw(uint64_t hash) {
+std::shared_ptr<File> O2rArchive::LoadFile(uint64_t hash) {
     const std::string& filePath =
         *Context::GetInstance()->GetResourceManager()->GetArchiveManager()->HashToString(hash);
-    return LoadFileRaw(filePath);
+    return LoadFile(filePath);
 }
 
-std::shared_ptr<File> O2rArchive::LoadFileRaw(const std::string& filePath) {
+std::shared_ptr<File> O2rArchive::LoadFile(const std::string& filePath) {
     if (mZipArchive == nullptr) {
         SPDLOG_TRACE("Failed to open file {} from zip archive {}. Archive not open.", filePath, GetPath());
         return nullptr;
@@ -38,7 +38,7 @@ std::shared_ptr<File> O2rArchive::LoadFileRaw(const std::string& filePath) {
 
     // Filesize 0, no logging needed
     if (zipEntryStat.size == 0) {
-        // SPDLOG_TRACE("({}) Failed to load file {}; filesize 0", GetLastError(), filePath, GetPath());
+        SPDLOG_TRACE("Failed to load file {}; filesize 0", filePath, GetPath());
         return nullptr;
     }
 

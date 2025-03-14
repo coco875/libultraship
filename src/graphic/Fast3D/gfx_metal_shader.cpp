@@ -8,7 +8,7 @@
 #ifdef __APPLE__
 
 #include <Context.h>
-#include <ShaderFactory.h>
+#include <resource/factory/ShaderFactory.h>
 // This is a workaround for conflicting defines on Metal.hpp
 #define TRUE 1
 #define FALSE 0
@@ -26,7 +26,7 @@
     "2.0)"
 
 static const char* p_shader_item_to_str(uint32_t item, bool with_alpha, bool only_alpha, bool inputs_have_alpha,
-                                      bool first_cycle, bool hint_single_element) {
+                                        bool first_cycle, bool hint_single_element) {
     if (!only_alpha) {
         switch (item) {
             case SHADER_0:
@@ -112,9 +112,9 @@ bool p_get_bool(prism::ContextTypes* value) {
 #undef RAND_NOISE
 
 prism::ContextTypes* p_append_formula(prism::ContextTypes* a_arg, prism::ContextTypes* a_single,
-                                    prism::ContextTypes* a_mult, prism::ContextTypes* a_mix,
-                                    prism::ContextTypes* a_with_alpha, prism::ContextTypes* a_only_alpha,
-                                    prism::ContextTypes* a_alpha, prism::ContextTypes* a_first_cycle) {
+                                      prism::ContextTypes* a_mult, prism::ContextTypes* a_mix,
+                                      prism::ContextTypes* a_with_alpha, prism::ContextTypes* a_only_alpha,
+                                      prism::ContextTypes* a_alpha, prism::ContextTypes* a_first_cycle) {
     auto c = std::get<prism::MTDArray<int>>(*a_arg);
     bool do_single = p_get_bool(a_single);
     bool do_multiply = p_get_bool(a_mult);
@@ -158,7 +158,7 @@ static MTL::VertexDescriptor* vertex_descriptor;
 prism::ContextTypes* update_raw_floats(prism::ContextTypes* num) {
     MTL::VertexFormat format;
     int size = std::get<int>(*num);
-    switch(size){
+    switch (size) {
         case 4:
             format = MTL::VertexFormatFloat4;
             break;
@@ -182,6 +182,20 @@ prism::ContextTypes* update_raw_floats(prism::ContextTypes* num) {
 
 prism::ContextTypes* get_vertex_index() {
     return new prism::ContextTypes{ vertex_index };
+}
+
+std::optional<std::string> metal_include_fs(const std::string& path) {
+    auto init = std::make_shared<Ship::ResourceInitData>();
+    init->Type = (uint32_t)Ship::ResourceType::Shader;
+    init->ByteOrder = Ship::Endianness::Native;
+    init->Format = RESOURCE_FORMAT_BINARY;
+    auto res = static_pointer_cast<Ship::Shader>(
+        Ship::Context::GetInstance()->GetResourceManager()->LoadResource(path, true, init));
+    if (res == nullptr) {
+        return std::nullopt;
+    }
+    auto inc = static_cast<std::string*>(res->GetRawPointer());
+    return *inc;
 }
 
 // MARK: - Public Methods
@@ -229,17 +243,17 @@ MTL::VertexDescriptor* gfx_metal_build_shader(std::string& result, size_t& num_f
         { "o_do_multiply", M_ARRAY(cc_features.do_multiply, bool, 2, 2) },
         { "o_color_alpha_same", M_ARRAY(cc_features.color_alpha_same, bool, 2) },
         { "o_three_point_filtering", three_point_filtering },
-        { "get_vertex_index", (InvokeFunc) get_vertex_index },
-        { "append_formula", (InvokeFunc) p_append_formula },
-        { "update_floats", (InvokeFunc) update_raw_floats },
+        { "get_vertex_index", (InvokeFunc)get_vertex_index },
+        { "append_formula", (InvokeFunc)p_append_formula },
+        { "update_floats", (InvokeFunc)update_raw_floats },
     };
     processor.populate(context);
     auto init = std::make_shared<Ship::ResourceInitData>();
-    init->Type = (uint32_t) Ship::ResourceType::Shader;
+    init->Type = (uint32_t)Ship::ResourceType::Shader;
     init->ByteOrder = Ship::Endianness::Native;
     init->Format = RESOURCE_FORMAT_BINARY;
-    auto res = static_pointer_cast<Ship::Shader>(
-        Ship::Context::GetInstance()->GetResourceManager()->LoadResource("shaders/metal/default.shader.metal", true, init));
+    auto res = static_pointer_cast<Ship::Shader>(Ship::Context::GetInstance()->GetResourceManager()->LoadResource(
+        "shaders/metal/default.shader.metal", true, init));
 
     if (res == nullptr) {
         SPDLOG_ERROR("Failed to load default metal shader, missing f3d.o2r?");
@@ -248,6 +262,7 @@ MTL::VertexDescriptor* gfx_metal_build_shader(std::string& result, size_t& num_f
 
     auto shader = static_cast<std::string*>(res->GetRawPointer());
     processor.load(*shader);
+    processor.bind_include_loader(metal_include_fs);
     result = processor.process();
     // SPDLOG_INFO("=========== METAL SHADER ============");
     // SPDLOG_INFO(result);

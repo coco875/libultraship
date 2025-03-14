@@ -6,13 +6,13 @@
 #include "gfx_cc.h"
 #include <prism/processor.h>
 #include <public/bridge/consolevariablebridge.h>
-#include <ShaderFactory.h>
+#include <resource/factory/ShaderFactory.h>
 #include <Context.h>
 
 #define RAND_NOISE "((random(float3(floor(screenSpace.xy * noise_scale), noise_frame)) + 1.0) / 2.0)"
 
 static const char* prism_shader_item_to_str(uint32_t item, bool with_alpha, bool only_alpha, bool inputs_have_alpha,
-                                      bool first_cycle, bool hint_single_element) {
+                                            bool first_cycle, bool hint_single_element) {
     if (!only_alpha) {
         switch (item) {
             default:
@@ -99,9 +99,9 @@ bool prism_get_bool(prism::ContextTypes* value) {
 #undef RAND_NOISE
 
 prism::ContextTypes* prism_append_formula(prism::ContextTypes* a_arg, prism::ContextTypes* a_single,
-                                    prism::ContextTypes* a_mult, prism::ContextTypes* a_mix,
-                                    prism::ContextTypes* a_with_alpha, prism::ContextTypes* a_only_alpha,
-                                    prism::ContextTypes* a_alpha, prism::ContextTypes* a_first_cycle) {
+                                          prism::ContextTypes* a_mult, prism::ContextTypes* a_mix,
+                                          prism::ContextTypes* a_with_alpha, prism::ContextTypes* a_only_alpha,
+                                          prism::ContextTypes* a_alpha, prism::ContextTypes* a_first_cycle) {
     auto c = std::get<prism::MTDArray<int>>(*a_arg);
     bool do_single = prism_get_bool(a_single);
     bool do_multiply = prism_get_bool(a_mult);
@@ -145,8 +145,23 @@ prism::ContextTypes* update_raw_floats(prism::ContextTypes* num) {
     return nullptr;
 }
 
+std::optional<std::string> dx_include_fs(const std::string& path) {
+    auto init = std::make_shared<Ship::ResourceInitData>();
+    init->Type = (uint32_t)Ship::ResourceType::Shader;
+    init->ByteOrder = Ship::Endianness::Native;
+    init->Format = RESOURCE_FORMAT_BINARY;
+    auto res = static_pointer_cast<Ship::Shader>(
+        Ship::Context::GetInstance()->GetResourceManager()->LoadResource(path, true, init));
+    if (res == nullptr) {
+        return std::nullopt;
+    }
+
+    auto inc = static_cast<std::string*>(res->GetRawPointer());
+    return *inc;
+}
+
 std::string gfx_direct3d_common_build_shader(size_t& num_floats, const CCFeatures& cc_features,
-                                      bool include_root_signature, bool three_point_filtering, bool use_srgb) {
+                                             bool include_root_signature, bool three_point_filtering, bool use_srgb) {
     raw_num_floats = 4;
 
     prism::Processor processor;
@@ -187,16 +202,16 @@ std::string gfx_direct3d_common_build_shader(size_t& num_floats, const CCFeature
         { "o_root_signature", include_root_signature },
         { "o_three_point_filtering", three_point_filtering },
         { "srgb_mode", use_srgb },
-        { "append_formula", (InvokeFunc) prism_append_formula },
-        { "update_floats", (InvokeFunc) update_raw_floats },
+        { "append_formula", (InvokeFunc)prism_append_formula },
+        { "update_floats", (InvokeFunc)update_raw_floats },
     };
     processor.populate(context);
     auto init = std::make_shared<Ship::ResourceInitData>();
-    init->Type = (uint32_t) Ship::ResourceType::Shader;
+    init->Type = (uint32_t)Ship::ResourceType::Shader;
     init->ByteOrder = Ship::Endianness::Native;
     init->Format = RESOURCE_FORMAT_BINARY;
-    auto res = static_pointer_cast<Ship::Shader>(
-        Ship::Context::GetInstance()->GetResourceManager()->LoadResource("shaders/directx/default.shader.hlsl", true, init));
+    auto res = static_pointer_cast<Ship::Shader>(Ship::Context::GetInstance()->GetResourceManager()->LoadResource(
+        "shaders/directx/default.shader.hlsl", true, init));
 
     if (res == nullptr) {
         SPDLOG_ERROR("Failed to load default directx shader, missing f3d.o2r?");
@@ -205,6 +220,7 @@ std::string gfx_direct3d_common_build_shader(size_t& num_floats, const CCFeature
 
     auto shader = static_cast<std::string*>(res->GetRawPointer());
     processor.load(*shader);
+    processor.bind_include_loader(dx_include_fs);
     auto result = processor.process();
     num_floats = raw_num_floats;
     // SPDLOG_INFO("=========== DX11 SHADER ============");
