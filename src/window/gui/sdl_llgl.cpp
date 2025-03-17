@@ -6,7 +6,7 @@
 
 #include "sdl_llgl.h"
 
-SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, int rendererID,
+SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync_enabled, int rendererID,
                        LLGL::RenderSystemDescriptor& desc)
     : title_{ title }, size{ size } {
     Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
@@ -36,15 +36,24 @@ SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, int render
     switch (rendererID) {
         case LLGL::RendererID::OpenGL:
         case LLGL::RendererID::OpenGLES: {
+#if defined(__APPLE__)
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+#endif
             SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
             SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+            SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
 
             SDL_GL_GetDrawableSize(wnd, (int*) &size.width, (int*) &size.height);
 
             SDL_GLContext ctx = SDL_GL_CreateContext(wnd);
 
             SDL_GL_MakeCurrent(wnd, ctx);
+            SDL_GL_SetSwapInterval(vsync_enabled ? 1 : 0);
 
             // Init LLGL
             desc = { "OpenGL" };

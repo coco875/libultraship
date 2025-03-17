@@ -10,7 +10,7 @@
 class SDLSurface final : public LLGL::Surface {
   public:
     // Constructor and destructor
-    SDLSurface(const LLGL::Extent2D& size, const char* title, int rendererID, LLGL::RenderSystemDescriptor& desc);
+    SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync_enabled, int rendererID, LLGL::RenderSystemDescriptor& desc);
     ~SDLSurface();
 
     // Interface implementation
