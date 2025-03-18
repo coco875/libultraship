@@ -22,6 +22,7 @@ Fast3dWindow::Fast3dWindow(std::vector<std::shared_ptr<Ship::GuiWindow>> guiWind
     mWindowManagerApi = nullptr;
     mRenderingApi = nullptr;
 
+    AddAvailableWindowBackend(Ship::WindowBackend::FAST3D_SDL_LLGL);
 #ifdef _WIN32
     AddAvailableWindowBackend(Ship::WindowBackend::FAST3D_DXGI_DX11);
 #endif
@@ -31,7 +32,6 @@ Fast3dWindow::Fast3dWindow(std::vector<std::shared_ptr<Ship::GuiWindow>> guiWind
     }
 #endif
     AddAvailableWindowBackend(Ship::WindowBackend::FAST3D_SDL_OPENGL);
-    AddAvailableWindowBackend(Ship::WindowBackend::FAST3D_SDL_LLGL);
 }
 
 Fast3dWindow::~Fast3dWindow() {
@@ -174,7 +174,7 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
     }
 
     auto gui = wnd->GetGui();
-    
+
     // Setup game framebuffers to match available window space
     gfx_start_frame();
     // Setup of the backend frames and draw initial Window and GUI menus

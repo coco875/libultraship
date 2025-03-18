@@ -4,9 +4,12 @@
 
 #include "imgui_impl_sdl2.h"
 
-
 #include <SDL2/SDL_syswm.h>
 #include "sdl_llgl.h"
+
+#ifdef LLGL_OS_LINUX
+LLGL::OpenGL::RenderSystemNativeHandle handle;
+#endif
 
 SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync_enabled, int rendererID,
                        LLGL::RenderSystemDescriptor& desc)
@@ -29,7 +32,7 @@ SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync
             break;
     }
 
-    wnd = SDL_CreateWindow(title, 400, 200, (int) size.width, (int) size.height, flags);
+    wnd = SDL_CreateWindow(title, 400, 200, (int)size.width, (int)size.height, flags);
     if (wnd == nullptr) {
         LLGL::Log::Errorf("Failed to create SDL2 window\n");
         exit(1);
@@ -38,10 +41,6 @@ SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync
     switch (rendererID) {
         case LLGL::RendererID::OpenGL:
         case LLGL::RendererID::OpenGLES: {
-            SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-            SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-            SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-
             // Init LLGL
             desc = { "OpenGL" };
 
@@ -50,9 +49,9 @@ SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync
 
             SDL_GL_MakeCurrent(wnd, ctx);
 
-            auto handle = LLGL::OpenGL::RenderSystemNativeHandle{ (GLXContext) ctx };
+            handle = LLGL::OpenGL::RenderSystemNativeHandle{ (GLXContext)ctx };
 
-            desc.nativeHandle = (void*) &handle;
+            desc.nativeHandle = (void*)&handle;
             desc.nativeHandleSize = sizeof(LLGL::OpenGL::RenderSystemNativeHandle);
 #endif
             break;
@@ -68,7 +67,7 @@ SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync
     }
 
 #ifdef __APPLE__
-    SDL_GL_GetDrawableSize(wnd, (int*) &size.width, (int*) &size.height);
+    SDL_GL_GetDrawableSize(wnd, (int*)&size.width, (int*)&size.height);
 #endif
 }
 
@@ -82,6 +81,7 @@ bool SDLSurface::GetNativeHandle(void* nativeHandle, std::size_t nativeHandleSiz
     auto* nativeHandlePtr = static_cast<LLGL::NativeHandle*>(nativeHandle);
 #ifdef WIN32
     nativeHandlePtr->window = wmInfo.info.win.window;
+    nativeHandlePtr->hdc = wmInfo.info.win.hdc;
 #elif defined(__APPLE__)
     nativeHandlePtr->responder = wmInfo.info.cocoa.window;
 #else

@@ -230,6 +230,7 @@ find_package(Vulkan QUIET)
 if(Vulkan_FOUND)
     include_directories(${Vulkan_INCLUDE_DIR})
     target_link_libraries(${PROJECT_NAME} PRIVATE ${Vulkan_LIBRARY})
+    target_compile_definitions(libultraship PRIVATE LLGL_BUILD_RENDERER_VULKAN)
 endif()
 
 #=================== Compile Options & Defs ===================

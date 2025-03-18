@@ -319,8 +319,8 @@ static LRESULT CALLBACK gfx_sdl_wnd_proc(HWND h_wnd, UINT message, WPARAM w_para
 };
 #endif
 
-static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, uint32_t width,
-                         uint32_t height, int32_t posX, int32_t posY) {
+static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen,
+                                            uint32_t width, uint32_t height, int32_t posX, int32_t posY) {
     window_width = width;
     window_height = height;
 
@@ -347,7 +347,10 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     Ship::GuiWindowInitData window_impl;
 
     if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, vsync_enabled, LLGL::RendererID::OpenGL, window_impl.LLGL.desc), window_impl.LLGL.desc };
+        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{ window_width, window_height }, title,
+                                                          vsync_enabled, LLGL::RendererID::OpenGL,
+                                                          window_impl.LLGL.desc),
+                             window_impl.LLGL.desc };
         wnd = window_impl.LLGL.Window->wnd;
         return window_impl;
     }
