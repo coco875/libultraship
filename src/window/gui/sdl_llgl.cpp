@@ -4,6 +4,8 @@
 
 #include "imgui_impl_sdl2.h"
 
+
+#include <SDL2/SDL_syswm.h>
 #include "sdl_llgl.h"
 
 SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync_enabled, int rendererID,

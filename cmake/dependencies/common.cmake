@@ -156,3 +156,8 @@ FetchContent_Declare(
     PATCH_COMMAND ${llgl_apply_patch_if_needed}
 )
 FetchContent_MakeAvailable(llgl)
+
+if(WIN32)
+    set(EXTERNAL_INCLUDE_DIR "${llgl_SOURCE_DIR}/external")
+    include_directories("${EXTERNAL_INCLUDE_DIR}/OpenGL/include")
+endif()
