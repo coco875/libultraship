@@ -180,7 +180,7 @@ void Gui::ImGuiWMInit() {
             break;
 #endif
 case WindowBackend::FAST3D_SDL_LLGL:
-            InitImGui(*mImpl.LLGL.Window, llgl_renderer, llgl_swapChain);
+            InitImGui(*mImpl.LLGL.Window, llgl_renderer, llgl_swapChain, llgl_cmdBuffer);
             break;
         default:
             break;

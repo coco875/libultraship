@@ -347,7 +347,7 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     Ship::GuiWindowInitData window_impl;
 
     if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, vsync_enabled, LLGL::RendererID::Metal, window_impl.LLGL.desc), window_impl.LLGL.desc };
+        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{window_width, window_height}, title, vsync_enabled, LLGL::RendererID::OpenGL, window_impl.LLGL.desc), window_impl.LLGL.desc };
         wnd = window_impl.LLGL.Window->wnd;
         return window_impl;
     }

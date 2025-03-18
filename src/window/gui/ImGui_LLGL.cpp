@@ -6,17 +6,27 @@
 #include "imgui_impl_opengl3.h"
 #ifdef LLGL_BUILD_RENDERER_VULKAN
 #include "imgui_impl_vulkan.h"
-#include <LLGL/Backend/Vulkan/NativeHandle.h>
 #endif
 #ifdef __APPLE__
 #include "imgui_impl_metal.h"
-#include <LLGL/Backend/Metal/NativeHandle.h>
 #endif
 #ifdef WIN32
 #include "imgui_impl_dx11.h"
+#include "imgui_impl_dx12.h"
 #endif
 
 #include <LLGL/Backend/OpenGL/NativeHandle.h>
+#ifdef LLGL_BUILD_RENDERER_VULKAN
+#include <LLGL/Backend/Vulkan/NativeHandle.h>
+#endif
+#ifdef __APPLE__
+#include <LLGL/Backend/Metal/NativeHandle.h>
+#endif
+#ifdef WIN32
+#include <LLGL/Backend/Direct3D11/NativeHandle.h>
+#include <LLGL/Backend/Direct3D12/NativeHandle.h>
+#endif
+
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_syswm.h>
 
@@ -103,10 +113,10 @@ static VkRenderPass CreateVulkanRenderPass(VkDevice vulkanDevice, LLGL::SwapChai
     assert(result == VK_SUCCESS);
     return vulkanRenderPass;
 }
-
 #endif
 
-void InitImGui(SDLSurface& wnd, LLGL::RenderSystemPtr& renderer, LLGL::SwapChain* swapChain) {
+void InitImGui(SDLSurface& wnd, LLGL::RenderSystemPtr& renderer, LLGL::SwapChain* swapChain,
+               LLGL::CommandBuffer* cmdBuffer) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
