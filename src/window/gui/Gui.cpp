@@ -553,11 +553,14 @@ void Gui::HandleMouseCapture() {
     }
 }
 
-void Gui::StartFrame() {
-    HandleMouseCapture();
+void Gui::ImGuiNewFrame() {
     ImGuiBackendNewFrame();
     ImGuiWMNewFrame();
     ImGui::NewFrame();
+}
+
+void Gui::StartFrame() {
+    HandleMouseCapture();
 }
 
 void Gui::EndFrame() {
@@ -714,13 +717,14 @@ void Gui::CheckSaveCvars() {
 void Gui::StartDraw() {
     // Initialize the frame.
     StartFrame();
-    // Draw the gui menus
-    DrawMenu();
-    // Calculate the available space the game can render to
-    CalculateGameViewport();
 }
 
 void Gui::EndDraw() {
+    ImGuiNewFrame();
+    // Calculate the available space the game can render to
+    CalculateGameViewport();
+    // Draw the gui menus
+    DrawMenu();
     // Draw the game framebuffer into ImGui
     DrawGame();
     // End the frame

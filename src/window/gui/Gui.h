@@ -73,6 +73,7 @@ class Gui {
     ~Gui();
 
     void Init(GuiWindowInitData windowImpl);
+    void ImGuiNewFrame();
     void StartDraw();
     void EndDraw();
     void HandleWindowEvents(WindowEvent event);
