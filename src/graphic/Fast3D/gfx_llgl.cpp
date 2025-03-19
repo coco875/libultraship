@@ -27,7 +27,8 @@ const char* gfx_llgl_get_name(void) {
 }
 
 int gfx_llgl_get_max_texture_size(void) {
-    return 0;
+    auto caps = llgl_renderer->GetRenderingCaps();
+    return caps.limits.max2DTextureSize;
 }
 
 struct GfxClipParameters gfx_llgl_get_clip_parameters(void) {
