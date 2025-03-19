@@ -15,6 +15,12 @@ LLGL::RenderSystemPtr llgl_renderer;
 LLGL::SwapChain* llgl_swapChain;
 LLGL::CommandBuffer* llgl_cmdBuffer;
 
+struct {
+    int current_tile;
+    uint32_t current_texture_ids[SHADER_MAX_TEXTURES];
+    std::vector<LLGL::Texture *> textures;
+} llgl_state;
+
 const char* gfx_llgl_get_name(void) {
     // renderer->GetName();
     return "LLGL";
@@ -46,13 +52,25 @@ void gfx_llgl_shader_get_info(struct ShaderProgram* prg, uint8_t* num_inputs, bo
 }
 
 uint32_t gfx_llgl_new_texture(void) {
-    return 0;
+    llgl_state.textures.resize(llgl_state.textures.size() + 1);
+    return (uint32_t)(llgl_state.textures.size() - 1);
 }
 
 void gfx_llgl_select_texture(int tile, uint32_t texture_id) {
+    llgl_state.current_tile = tile;
+    llgl_state.current_texture_ids[tile] = texture_id;
 }
 
 void gfx_llgl_upload_texture(const uint8_t* rgba32_buf, uint32_t width, uint32_t height) {
+    LLGL::ImageView imageView;
+    imageView.format = LLGL::ImageFormat::RGBA;
+    imageView.data = rgba32_buf;
+    imageView.dataSize = width * height * 4;
+    LLGL::TextureDescriptor texDesc;
+    texDesc.type = LLGL::TextureType::Texture2D;
+    texDesc.format = LLGL::Format::RGBA8UNorm;
+    texDesc.extent = { width, height, 1 };
+    llgl_state.textures[llgl_state.current_texture_ids[llgl_state.current_tile]] = llgl_renderer->CreateTexture(texDesc, &imageView);
 }
 
 void gfx_llgl_set_sampler_parameters(int sampler, bool linear_filter, uint32_t cms, uint32_t cmt) {
@@ -65,9 +83,11 @@ void gfx_llgl_set_zmode_decal(bool zmode_decal) {
 }
 
 void gfx_llgl_set_viewport(int x, int y, int width, int height) {
+    llgl_cmdBuffer->SetViewport(LLGL::Viewport(x, y, width, height));
 }
 
 void gfx_llgl_set_scissor(int x, int y, int width, int height) {
+    llgl_cmdBuffer->SetScissor(LLGL::Scissor(x, y, width, height));
 }
 
 void gfx_llgl_set_use_alpha(bool use_alpha) {
