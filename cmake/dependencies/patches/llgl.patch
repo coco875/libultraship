@@ -1,8 +1,17 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 9d38212c..8c294429 100644
+index 2a51382d..57cc8dec 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -76,7 +76,7 @@ endif()
+@@ -16,7 +16,7 @@ if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
+     if(APPLE)
+         project(LLGL LANGUAGES C CXX OBJC OBJCXX)
+     elseif(MSVC)
+-        project(LLGL LANGUAGES C CXX CSharp)
++        project(LLGL LANGUAGES C CXX)
+     else()
+         project(LLGL LANGUAGES C CXX)
+     endif()
+@@ -90,7 +90,7 @@ endif()
  
  # === Build path ===
  
@@ -11,3 +20,19 @@ index 9d38212c..8c294429 100644
  
  set( EXTERNAL_MODULE_DIR            "${PROJECT_SOURCE_DIR}/cmake"                   )
  set( PROJECT_INCLUDE_DIR            "${PROJECT_SOURCE_DIR}/include"                 )
+@@ -169,6 +169,12 @@ endif()
+ 
+ if(NOT LLGL_UWP_PLATFORM)
+     option(LLGL_BUILD_RENDERER_VULKAN "Include Vulkan renderer project (experimental)" OFF)
++    find_package(Vulkan QUIET)
++    if (Vulkan_FOUND)
++    set(LLGL_BUILD_RENDERER_VULKAN ON)
++    else()
++    set(LLGL_BUILD_RENDERER_VULKAN OFF)
++    endif()
+ endif()
+ 
+ if(WIN32)
+diff --git a/llgl.patch b/llgl.patch
+new file mode 100644
+index 00000000..e69de29b

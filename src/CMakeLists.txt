@@ -224,7 +224,56 @@ if (USE_OPENGLES)
 endif()
 
 target_link_libraries(libultraship PUBLIC prism)
+
+if(LLGL_BUILD_RENDERER_VULKAN)
+target_link_libraries(${PROJECT_NAME} PUBLIC LLGL_Vulkan)
+endif()
+
+if(LLGL_BUILD_RENDERER_OPENGL)
+target_link_libraries(${PROJECT_NAME} PUBLIC LLGL_OpenGL)
+endif()
+
+if(LLGL_BUILD_RENDERER_DIRECT3D11)
+target_link_libraries(${PROJECT_NAME} PUBLIC LLGL_Direct3D11)
+endif()
+
+if(LLGL_BUILD_RENDERER_DIRECT3D12)
+target_link_libraries(${PROJECT_NAME} PUBLIC LLGL_Direct3D12)
+endif()
+
+if(LLGL_BUILD_RENDERER_METAL)
+target_link_libraries(${PROJECT_NAME} PUBLIC LLGL_Metal)
+endif()
 target_link_libraries(libultraship PUBLIC LLGL)
+
+find_package(glslang REQUIRED)
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${glslang_SOURCE_DIR}/glslang/Public)
+target_link_libraries(${PROJECT_NAME} PRIVATE glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper)
+
+find_package(spirv_cross_core REQUIRED)
+# if(LLGL_BUILD_RENDERER_OPENGL)
+    find_package(spirv_cross_glsl REQUIRED)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${spirv_cross_glsl_SOURCE_DIR}/include)
+    target_link_libraries(${PROJECT_NAME} PRIVATE spirv-cross-glsl)
+# endif()
+# if(LLGL_BUILD_RENDERER_VULKAN OR LLGL_BUILD_RENDERER_DIRECT3D11 OR LLGL_BUILD_RENDERER_DIRECT3D12)
+    find_package(spirv_cross_hlsl REQUIRED)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${spirv_cross_hlsl_SOURCE_DIR}/include)
+    target_link_libraries(${PROJECT_NAME} PRIVATE spirv-cross-hlsl)
+# endif()
+# if(LLGL_BUILD_RENDERER_METAL)
+    find_package(spirv_cross_msl REQUIRED)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${spirv_cross_msl_SOURCE_DIR}/include)
+    target_link_libraries(${PROJECT_NAME} PRIVATE spirv-cross-msl)
+# endif()
+find_package(spirv_cross_cpp REQUIRED)
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${spirv_cross_core_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${spirv_cross_cpp_SOURCE_DIR}/include)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE spirv-cross-core)
+target_link_libraries(${PROJECT_NAME} PRIVATE spirv-cross-cpp)
 
 find_package(Vulkan QUIET)
 if(Vulkan_FOUND)

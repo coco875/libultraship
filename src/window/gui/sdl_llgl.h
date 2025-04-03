@@ -9,7 +9,7 @@
 class SDLSurface final : public LLGL::Surface {
   public:
     // Constructor and destructor
-    SDLSurface(const LLGL::Extent2D& size, const char* title, bool vsync_enabled, int rendererID, LLGL::RenderSystemDescriptor& desc);
+    SDLSurface(const LLGL::Extent2D& size, const char* title, int rendererID, LLGL::RenderSystemDescriptor& desc);
     ~SDLSurface();
 
     // Interface implementation
@@ -17,9 +17,10 @@ class SDLSurface final : public LLGL::Surface {
     LLGL::Extent2D GetContentSize() const override;
     bool AdaptForVideoMode(LLGL::Extent2D* resolution, bool* fullscreen) override;
     LLGL::Display* FindResidentDisplay() const override;
+    bool ProcessEvents(LLGL::SwapChain* swapChain);
 
     SDL_Window* wnd = nullptr;
-    LLGL::Extent2D size;
+    LLGL::Extent2D size_;
 
   private:
     std::string title_;
