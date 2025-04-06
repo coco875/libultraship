@@ -1,11 +1,11 @@
 
+#include <prism/processor.h>
 #include "gfx_cc.h"
 #include "gfx_rendering_api.h"
 #include "window/gui/Gui.h"
 #include "gfx_pc.h"
-#include <prism/processor.h>
 #include <LLGL/LLGL.h>
-#ifndef __APPLE__
+#ifdef LLGL_OS_LINUX
 #include <GL/glx.h>
 #endif
 
@@ -116,6 +116,7 @@ void gfx_llgl_init(Ship::GuiWindowInitData& init_data) {
 
     LLGL::SwapChainDescriptor swapChainDesc;
     swapChainDesc.resolution = { 800, 400 };
+    swapChainDesc.resizable = true;
     llgl_swapChain = llgl_renderer->CreateSwapChain(swapChainDesc, init_data.LLGL.Window);
 
     llgl_cmdBuffer = llgl_renderer->CreateCommandBuffer(LLGL::CommandBufferFlags::ImmediateSubmit);

@@ -207,7 +207,7 @@ static void create_depth_stencil_objects(uint32_t width, uint32_t height, uint32
     }
 }
 
-static void gfx_d3d11_init() {
+static void gfx_d3d11_init(Ship::GuiWindowInitData& init_data) {
     // Load d3d11.dll
     d3d.d3d11_module = LoadLibraryW(L"d3d11.dll");
     if (d3d.d3d11_module == nullptr) {

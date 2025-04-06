@@ -22,7 +22,9 @@
 #else
 #include <SDL2/SDL.h>
 #define GL_GLEXT_PROTOTYPES 1
+#ifndef WIN32
 #include <SDL2/SDL_opengles2.h>
+#endif
 #endif
 
 #include "window/gui/Gui.h"
@@ -324,7 +326,7 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     window_width = width;
     window_height = height;
 
-#ifndef __APPLE__
+#ifdef LLGL_OS_LINUX
     SDL_SetHint(SDL_HINT_VIDEODRIVER, "x11");
 #endif
 
@@ -347,8 +349,8 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     Ship::GuiWindowInitData window_impl;
 
     if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{ window_width, window_height }, title,
-                                                          LLGL::RendererID::Vulkan, window_impl.LLGL.desc),
+        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{ (uint32_t) window_width, (uint32_t) window_height }, title,
+                                                          LLGL::RendererID::Direct3D11, window_impl.LLGL.desc),
                              window_impl.LLGL.desc };
         wnd = window_impl.LLGL.Window->wnd;
         return window_impl;
@@ -599,7 +601,7 @@ static void gfx_sdl_handle_single_event(SDL_Event& event) {
 #else
                     SDL_GL_GetDrawableSize(wnd, &window_width, &window_height);
 #endif
-                    llgl_swapChain->ResizeBuffers({ window_width, window_height });
+                    llgl_swapChain->ResizeBuffers({ (uint32_t) window_width, (uint32_t) window_height });
                     break;
                 case SDL_WINDOWEVENT_CLOSE:
                     if (event.window.windowID == SDL_GetWindowID(wnd)) {

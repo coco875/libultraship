@@ -33,6 +33,3 @@ index 2a51382d..57cc8dec 100644
  endif()
  
  if(WIN32)
-diff --git a/llgl.patch b/llgl.patch
-new file mode 100644
-index 00000000..e69de29b

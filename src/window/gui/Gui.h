@@ -42,7 +42,7 @@ typedef struct {
         SDL_Renderer* Renderer;
     } Metal;
     struct {
-        std::shared_ptr<SDLSurface> Window = nullptr;
+        std::shared_ptr<SDLSurface> Window;
         LLGL::RenderSystemDescriptor desc;
     } LLGL;
     struct {

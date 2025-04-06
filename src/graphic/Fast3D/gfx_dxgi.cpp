@@ -475,7 +475,7 @@ static LRESULT CALLBACK gfx_dxgi_wnd_proc(HWND h_wnd, UINT message, WPARAM w_par
     return 0;
 }
 
-void gfx_dxgi_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, uint32_t width,
+static Ship::GuiWindowInitData gfx_dxgi_init(const char* game_name, const char* gfx_api_name, bool start_in_fullscreen, uint32_t width,
                    uint32_t height, int32_t posX, int32_t posY) {
     LARGE_INTEGER qpc_init, qpc_freq;
     QueryPerformanceCounter(&qpc_init);
@@ -556,6 +556,7 @@ void gfx_dxgi_init(const char* game_name, const char* gfx_api_name, bool start_i
     dxgi.raw_input_device[0].dwFlags = RIDEV_INPUTSINK;
     dxgi.raw_input_device[0].hwndTarget = dxgi.h_wnd;
     RegisterRawInputDevices(dxgi.raw_input_device, 1, sizeof(dxgi.raw_input_device[0]));
+    return {};
 }
 
 static void gfx_dxgi_set_fullscreen_changed_callback(void (*on_fullscreen_changed)(bool is_now_fullscreen)) {
