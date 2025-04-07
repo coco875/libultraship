@@ -1,17 +1,20 @@
 #pragma once
 #include "window/Window.h"
+#include "window/gui/Gui.h"
 #include "graphic/Fast3D/gfx_window_manager_api.h"
 #include "graphic/Fast3D/gfx_rendering_api.h"
 #include "public/bridge/gfxbridge.h"
 #include "controller/controldevice/controller/mapping/keyboard/KeyboardScancodes.h"
 
 union Gfx;
+#include "interpreter.h"
 
 namespace Fast {
 class Fast3dWindow : public Ship::Window {
   public:
     Fast3dWindow();
     Fast3dWindow(std::vector<std::shared_ptr<Ship::GuiWindow>> guiWindows);
+    Fast3dWindow(std::shared_ptr<Ship::Gui> gui);
     ~Fast3dWindow();
 
     void Init() override;
@@ -25,6 +28,7 @@ class Fast3dWindow : public Ship::Window {
     uint32_t GetHeight() override;
     int32_t GetPosX() override;
     int32_t GetPosY() override;
+    float GetAspectRatio() override;
     void SetMousePos(Ship::Coords pos) override;
     Ship::Coords GetMousePos() override;
     Ship::Coords GetMouseDelta() override;
@@ -40,6 +44,7 @@ class Fast3dWindow : public Ship::Window {
     void SetFullscreen(bool isFullscreen) override;
     bool IsFullscreen() override;
     bool IsRunning() override;
+    uintptr_t GetGfxFrameBuffer() override;
     const char* GetKeyName(int32_t scancode) override;
 
     void InitWindowManager();
@@ -52,6 +57,8 @@ class Fast3dWindow : public Ship::Window {
     void EnableSRGBMode();
     bool DrawAndRunGraphicsCommands(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtxReplacements);
 
+    std::weak_ptr<Interpreter> GetInterpreterWeak() const;
+
   protected:
     static bool KeyDown(int32_t scancode);
     static bool KeyUp(int32_t scancode);
@@ -63,5 +70,6 @@ class Fast3dWindow : public Ship::Window {
   private:
     GfxRenderingAPI* mRenderingApi;
     GfxWindowManagerAPI* mWindowManagerApi;
+    std::shared_ptr<Interpreter> mInterpreter = nullptr;
 };
 } // namespace Fast
