@@ -28,8 +28,6 @@ namespace Fast {
 class Interpreter;
 }
 
-namespace Ship {
-
 #include "sdl_llgl.h"
 
 namespace Ship {
