@@ -361,8 +361,9 @@ static Ship::GuiWindowInitData gfx_sdl_init(const char* game_name, const char* g
     Ship::GuiWindowInitData window_impl;
 
     if (use_llgl) {
-        window_impl.LLGL = { std::make_shared<SDLSurface>(LLGL::Extent2D{ (uint32_t) window_width, (uint32_t) window_height }, title,
-                                                          LLGL::RendererID::Direct3D11, window_impl.LLGL.desc),
+        window_impl.LLGL = { std::make_shared<SDLSurface>(
+                                 LLGL::Extent2D{ (uint32_t)window_width, (uint32_t)window_height }, title,
+                                 LLGL::RendererID::OpenGL, window_impl.LLGL.desc),
                              window_impl.LLGL.desc };
         wnd = window_impl.LLGL.Window->wnd;
         return window_impl;
@@ -617,7 +618,7 @@ static void gfx_sdl_handle_single_event(SDL_Event& event) {
 #else
                     SDL_GL_GetDrawableSize(wnd, &window_width, &window_height);
 #endif
-                    llgl_swapChain->ResizeBuffers({ (uint32_t) window_width, (uint32_t) window_height });
+                    llgl_swapChain->ResizeBuffers({ (uint32_t)window_width, (uint32_t)window_height });
                     break;
                 case SDL_WINDOWEVENT_CLOSE:
                     if (event.window.windowID == SDL_GetWindowID(wnd)) {

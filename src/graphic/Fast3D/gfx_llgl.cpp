@@ -159,7 +159,10 @@ void gfx_llgl_copy_framebuffer(int fb_dst_id, int fb_src_id, int srcX0, int srcY
 }
 
 void gfx_llgl_clear_framebuffer(bool color, bool depth) {
-    llgl_cmdBuffer->Clear(0 | color ? LLGL::ClearFlags::Color : 0 | depth ? LLGL::ClearFlags::Depth : 0);
+    llgl_cmdBuffer->Clear(0 | color   ? LLGL::ClearFlags::Color
+                          : 0 | depth ? LLGL::ClearFlags::Depth
+                                      : 0,
+                          LLGL::ClearValue{ 0.0f, 0.2f, 0.2f, 1.0f });
 }
 
 void gfx_llgl_read_framebuffer_to_cpu(int fb_id, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {
