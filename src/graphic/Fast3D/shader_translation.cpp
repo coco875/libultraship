@@ -14,9 +14,12 @@
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
 #include "shader_translation.h"
+#include "gfx_llgl.h"
 
 static TBuiltInResource InitResources() {
     TBuiltInResource Resources;
+    auto caps = llgl_renderer->GetRenderingCaps();
+    auto limits = caps.limits;
 
     Resources.maxLights = 32;
     Resources.maxClipPlanes = 6;
@@ -38,12 +41,12 @@ static TBuiltInResource InitResources() {
     Resources.minProgramTexelOffset = -8;
     Resources.maxProgramTexelOffset = 7;
     Resources.maxClipDistances = 8;
-    Resources.maxComputeWorkGroupCountX = 65535;
-    Resources.maxComputeWorkGroupCountY = 65535;
-    Resources.maxComputeWorkGroupCountZ = 65535;
-    Resources.maxComputeWorkGroupSizeX = 1024;
-    Resources.maxComputeWorkGroupSizeY = 1024;
-    Resources.maxComputeWorkGroupSizeZ = 64;
+    Resources.maxComputeWorkGroupCountX = limits.maxComputeShaderWorkGroups[0];
+    Resources.maxComputeWorkGroupCountY = limits.maxComputeShaderWorkGroups[1];
+    Resources.maxComputeWorkGroupCountZ = limits.maxComputeShaderWorkGroups[2];
+    Resources.maxComputeWorkGroupSizeX = limits.maxComputeShaderWorkGroupSize[0];
+    Resources.maxComputeWorkGroupSizeY = limits.maxComputeShaderWorkGroupSize[1];
+    Resources.maxComputeWorkGroupSizeZ = limits.maxComputeShaderWorkGroupSize[2];
     Resources.maxComputeUniformComponents = 1024;
     Resources.maxComputeTextureImageUnits = 16;
     Resources.maxComputeImageUniforms = 8;
@@ -81,7 +84,7 @@ static TBuiltInResource InitResources() {
     Resources.maxTessPatchComponents = 120;
     Resources.maxPatchVertices = 32;
     Resources.maxTessGenLevel = 64;
-    Resources.maxViewports = 16;
+    Resources.maxViewports = limits.maxViewports;
     Resources.maxVertexAtomicCounters = 0;
     Resources.maxTessControlAtomicCounters = 0;
     Resources.maxTessEvaluationAtomicCounters = 0;
@@ -124,18 +127,8 @@ static TBuiltInResource InitResources() {
     return Resources;
 }
 
-glslang::TShader create_shader(EShLanguage type, std::filesystem::path shaderPath, std::string& shaderSource,
-                               char*& shaderSourceC) {
+glslang::TShader create_shader(EShLanguage type, std::filesystem::path shaderPath, char* shaderSourceC) {
     glslang::TShader shaderGlslang(type);
-
-    std::ifstream shaderFile(shaderPath);
-    if (!shaderFile.is_open()) {
-        LLGL::Log::Printf("Failed to open shader file");
-        throw std::runtime_error("Failed to open shader file");
-    }
-    shaderSource = std::string((std::istreambuf_iterator<char>(shaderFile)), std::istreambuf_iterator<char>());
-
-    shaderSourceC = shaderSource.data();
 
     shaderGlslang.setStrings(&shaderSourceC, 1);
 
@@ -176,9 +169,22 @@ void glslang_spirv_cross_test() {
 
     std::string vertShaderSource;
     std::string fragShaderSource;
-    char *vertShaderSourceC, *fragShaderSourceC;
-    auto vertShaderGlslang = create_shader(EShLangVertex, vertShaderPath, vertShaderSource, vertShaderSourceC);
-    auto fragShaderGlslang = create_shader(EShLangFragment, fragShaderPath, fragShaderSource, fragShaderSourceC);
+    std::ifstream shaderVertFile(shaderPath);
+    if (!shaderVertFile.is_open()) {
+        LLGL::Log::Printf("Failed to open shader file");
+        throw std::runtime_error("Failed to open shader file");
+    }
+    vertShaderSource = std::string((std::istreambuf_iterator<char>(shaderVertFile)), std::istreambuf_iterator<char>());
+    char* vertShaderSourceC = vertShaderSource.data();
+    auto vertShaderGlslang = create_shader(EShLangVertex, vertShaderPath, vertShaderSourceC);
+    std::ifstream shaderFragFile(fragShaderPath);
+    if (!shaderFragFile.is_open()) {
+        LLGL::Log::Printf("Failed to open shader file");
+        throw std::runtime_error("Failed to open shader file");
+    }
+    fragShaderSource = std::string((std::istreambuf_iterator<char>(shaderFragFile)), std::istreambuf_iterator<char>());
+    char* fragShaderSourceC = fragShaderSource.data();
+    auto fragShaderGlslang = create_shader(EShLangFragment, fragShaderPath, fragShaderSourceC);
 
     glslang::TProgram program;
     parse_shader(vertShaderGlslang, fragShaderGlslang);
@@ -336,9 +342,22 @@ void generate_shader(LLGL::ShaderDescriptor& vertShaderDesc, LLGL::ShaderDescrip
 
     std::string vertShaderSource;
     std::string fragShaderSource;
-    char *vertShaderSourceC, *fragShaderSourceC;
-    auto vertShaderGlslang = create_shader(EShLangVertex, vertShaderPath, vertShaderSource, vertShaderSourceC);
-    auto fragShaderGlslang = create_shader(EShLangFragment, fragShaderPath, fragShaderSource, fragShaderSourceC);
+    std::ifstream shaderVertFile(shaderPath);
+    if (!shaderVertFile.is_open()) {
+        LLGL::Log::Printf("Failed to open shader file");
+        throw std::runtime_error("Failed to open shader file");
+    }
+    vertShaderSource = std::string((std::istreambuf_iterator<char>(shaderVertFile)), std::istreambuf_iterator<char>());
+    char* vertShaderSourceC = vertShaderSource.data();
+    auto vertShaderGlslang = create_shader(EShLangVertex, vertShaderPath, vertShaderSourceC);
+    std::ifstream shaderFragFile(fragShaderPath);
+    if (!shaderFragFile.is_open()) {
+        LLGL::Log::Printf("Failed to open shader file");
+        throw std::runtime_error("Failed to open shader file");
+    }
+    fragShaderSource = std::string((std::istreambuf_iterator<char>(shaderFragFile)), std::istreambuf_iterator<char>());
+    char* fragShaderSourceC = fragShaderSource.data();
+    auto fragShaderGlslang = create_shader(EShLangFragment, fragShaderPath, fragShaderSourceC);
 
     parse_shader(vertShaderGlslang, fragShaderGlslang);
 
@@ -404,16 +423,16 @@ void generate_shader(LLGL::ShaderDescriptor& vertShaderDesc, LLGL::ShaderDescrip
         LLGL::Log::Printf("GLSL ES:\n%s\n", std::get<std::string>(fragShader).c_str());
     } else if (is_spirv(languages, version)) {
         vertShader = spirvSourceVert;
-        char* vertShaderSourceC = (char*) malloc(spirvSourceVert.size() * sizeof(uint32_t));
+        char* vertShaderSourceC = (char*)malloc(spirvSourceVert.size() * sizeof(uint32_t));
         memcpy(vertShaderSourceC, &(*spirvSourceVert.begin()), spirvSourceVert.size() * sizeof(uint32_t));
         vertShaderDesc = { LLGL::ShaderType::Vertex, vertShaderSourceC };
         vertShaderDesc.sourceType = LLGL::ShaderSourceType::BinaryBuffer;
         vertShaderDesc.sourceSize = spirvSourceVert.size() * sizeof(uint32_t);
 
         fragShader = spirvSourceFrag;
-        char* fragShaderSourceC = (char*) malloc(spirvSourceFrag.size() * sizeof(uint32_t));
+        char* fragShaderSourceC = (char*)malloc(spirvSourceFrag.size() * sizeof(uint32_t));
         memcpy(fragShaderSourceC, &(*spirvSourceFrag.begin()), spirvSourceFrag.size() * sizeof(uint32_t));
-        fragShaderDesc = { LLGL::ShaderType::Fragment, (char*) fragShaderSourceC };
+        fragShaderDesc = { LLGL::ShaderType::Fragment, (char*)fragShaderSourceC };
         fragShaderDesc.sourceType = LLGL::ShaderSourceType::BinaryBuffer;
         fragShaderDesc.sourceSize = spirvSourceFrag.size() * sizeof(uint32_t);
 
