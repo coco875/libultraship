@@ -1,34 +1,34 @@
 @prism(type='fragment', name='Fast3D Fragment Shader', version='1.0.0', description='Ported shader to prism', author='Emill & Prism Team')
 
-@{GLSL_VERSION}
+#version 450 core
 
-@if(core_opengl || opengles)
+@if(core_opengl)
 out vec4 vOutColor;
 @end
 
 @for(i in 0..2)
     @if(o_textures[i])
-        @{attr} vec2 vTexCoord@{i};
+        attribute vec2 vTexCoord@{i};
         @for(j in 0..2)
             @if(o_clamp[i][j])
                 @if(j == 0)
-                    @{attr} float vTexClampS@{i};
+                    attribute float vTexClampS@{i};
                 @else
-                    @{attr} float vTexClampT@{i};
+                    attribute float vTexClampT@{i};
                 @end
             @end
         @end
     @end
 @end
 
-@if(o_fog) @{attr} vec4 vFog;
-@if(o_grayscale) @{attr} vec4 vGrayscaleColor;
+@if(o_fog) attribute vec4 vFog;
+@if(o_grayscale) attribute vec4 vGrayscaleColor;
 
 @for(i in 0..o_inputs)
     @if(o_alpha)
-        @{attr} vec4 vInput@{i + 1};
+        attribute vec4 vInput@{i + 1};
     @else
-        @{attr} vec3 vInput@{i + 1};
+        attribute vec3 vInput@{i + 1};
     @end
 @end
 
@@ -84,11 +84,7 @@ void main() {
             @{s = o_clamp[i][0]}
             @{t = o_clamp[i][1]}
 
-            @if(opengles) 
-                vec2 texSize@{i} = vec2(textureSize(uTex@{i}, 0));
-            @else 
-                vec2 texSize@{i} = textureSize(uTex@{i}, 0);
-            @end
+            vec2 texSize@{i} = textureSize(uTex@{i}, 0);
 
             @if(!s && !t)
                 vec2 vTexCoordAdj@{i} = vTexCoord@{i};
@@ -105,11 +101,7 @@ void main() {
             vec4 texVal@{i} = hookTexture2D(uTex@{i}, vTexCoordAdj@{i}, texSize@{i});
 
             @if(o_masks[i])
-                @if(opengles) 
-                    vec2 maskSize@{i} = vec2(textureSize(uTexMask@{i}, 0));
-                @else 
-                    vec2 maskSize@{i} = textureSize(uTexMask@{i}, 0);
-                @end
+                vec2 maskSize@{i} = textureSize(uTexMask@{i}, 0);
 
                 vec4 maskVal@{i} = hookTexture2D(uTexMask@{i}, vTexCoordAdj@{i}, maskSize@{i});
 

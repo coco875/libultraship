@@ -240,28 +240,12 @@ static std::string llgl_build_fs_shader(const CCFeatures& cc_features) {
         { "SHADER_COMBINED", SHADER_COMBINED },
         { "SHADER_NOISE", SHADER_NOISE },
         { "append_formula", (InvokeFunc)llgl_append_formula },
-#ifdef __APPLE__
-        { "GLSL_VERSION", "#version 410 core" },
-        { "attr", "in" },
-        { "opengles", false },
-        { "core_opengl", true },
-        { "texture", "texture" },
-        { "vOutColor", "vOutColor" },
-#elif defined(USE_OPENGLES)
-        { "GLSL_VERSION", "#version 300 es\nprecision mediump float;" },
-        { "attr", "in" },
-        { "opengles", true },
-        { "core_opengl", false },
-        { "texture", "texture" },
-        { "vOutColor", "vOutColor" },
-#else
         { "GLSL_VERSION", "#version 130" },
         { "attr", "varying" },
         { "opengles", false },
         { "core_opengl", false },
         { "texture", "texture2D" },
         { "vOutColor", "gl_FragColor" },
-#endif
     };
     processor.populate(context);
     auto init = std::make_shared<Ship::ResourceInitData>();
@@ -280,9 +264,9 @@ static std::string llgl_build_fs_shader(const CCFeatures& cc_features) {
     processor.load(*shader);
     processor.bind_include_loader(llgl_opengl_include_fs);
     auto result = processor.process();
-    // SPDLOG_INFO("=========== FRAGMENT SHADER ============");
-    // SPDLOG_INFO(result);
-    // SPDLOG_INFO("========================================");
+    SPDLOG_INFO("=========== FRAGMENT SHADER ============");
+    SPDLOG_INFO(result);
+    SPDLOG_INFO("========================================");
     return result;
 }
 
@@ -303,23 +287,8 @@ static std::string llgl_build_vs_shader(const CCFeatures& cc_features) {
                                     { "o_alpha", cc_features.opt_alpha },
                                     { "o_inputs", cc_features.num_inputs },
                                     { "update_floats", (InvokeFunc)llgl_update_floats },
-#ifdef __APPLE__
-                                    { "GLSL_VERSION", "#version 410 core" },
-                                    { "attr", "in" },
-                                    { "out", "out" },
-                                    { "opengles", false }
-#elif defined(USE_OPENGLES)
-                                    { "GLSL_VERSION", "#version 300 es" },
-                                    { "attr", "in" },
-                                    { "out", "out" },
-                                    { "opengles", true }
-#else
-                                    { "GLSL_VERSION", "#version 110" },
                                     { "attr", "attribute" },
-                                    { "out", "varying" },
-                                    { "opengles", false }
-#endif
-    };
+                                    { "out", "varying" } };
     processor.populate(context);
 
     auto init = std::make_shared<Ship::ResourceInitData>();
@@ -338,13 +307,17 @@ static std::string llgl_build_vs_shader(const CCFeatures& cc_features) {
     processor.load(*shader);
     processor.bind_include_loader(llgl_opengl_include_fs);
     auto result = processor.process();
-    // SPDLOG_INFO("=========== VERTEX SHADER ============");
-    // SPDLOG_INFO(result);
-    // SPDLOG_INFO("========================================");
+    SPDLOG_INFO("=========== VERTEX SHADER ============");
+    SPDLOG_INFO(result);
+    SPDLOG_INFO("========================================");
     return result;
 }
 
 struct ShaderProgram* gfx_llgl_create_and_load_new_shader(uint64_t shader_id0, uint32_t shader_id1) {
+    CCFeatures cc_features;
+    gfx_cc_get_features(shader_id0, shader_id1, &cc_features);
+    const auto fs_buf = llgl_build_fs_shader(cc_features);
+    const auto vs_buf = llgl_build_vs_shader(cc_features);
     return nullptr;
 }
 
