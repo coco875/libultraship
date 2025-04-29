@@ -5,6 +5,7 @@
 #include "window/gui/Gui.h"
 #include "interpreter.h"
 #include <LLGL/LLGL.h>
+#include "LLGL/Utils/VertexFormat.h"
 #ifdef LLGL_OS_LINUX
 #include <GL/glx.h>
 #endif
@@ -12,6 +13,9 @@
 #include <LLGL/Backend/OpenGL/NativeHandle.h>
 #include "../../resource/type/Shader.h"
 #include <Context.h>
+#include "shader_translation.h"
+
+#include "utils/StringHelper.h"
 
 LLGL::RenderSystemPtr llgl_renderer;
 LLGL::SwapChain* llgl_swapChain;
@@ -43,6 +47,7 @@ void gfx_llgl_unload_shader(struct ShaderProgram* old_prg) {
 }
 
 void gfx_llgl_load_shader(struct ShaderProgram* new_prg) {
+    // llgl_cmdBuffer->SetPipelineState(new_prg->pipeline);
 }
 
 static void llgl_append_str(char* buf, size_t* len, const char* str) {
@@ -198,8 +203,34 @@ std::optional<std::string> llgl_opengl_include_fs(const std::string& path) {
     return *inc;
 }
 
+static int input_index = 0;
+
+prism::ContextTypes* get_input_location() {
+    auto input = input_index;
+    input_index++;
+    return new prism::ContextTypes{ input };
+}
+
+static int output_index = 0;
+
+prism::ContextTypes* get_output_location() {
+    auto output = output_index;
+    output_index++;
+    return new prism::ContextTypes{ output };
+}
+
+static int binding_index = 1;
+
+prism::ContextTypes* get_binding_index() {
+    auto bind = binding_index;
+    binding_index++;
+    return new prism::ContextTypes{ bind };
+}
+
 static std::string llgl_build_fs_shader(const CCFeatures& cc_features) {
     prism::Processor processor;
+    input_index = 0;
+    binding_index = 1;
     prism::ContextItems context = {
         { "o_c", M_ARRAY(cc_features.c, int, 2, 2, 4) },
         { "o_alpha", cc_features.opt_alpha },
@@ -240,12 +271,8 @@ static std::string llgl_build_fs_shader(const CCFeatures& cc_features) {
         { "SHADER_COMBINED", SHADER_COMBINED },
         { "SHADER_NOISE", SHADER_NOISE },
         { "append_formula", (InvokeFunc)llgl_append_formula },
-        { "GLSL_VERSION", "#version 130" },
-        { "attr", "varying" },
-        { "opengles", false },
-        { "core_opengl", false },
-        { "texture", "texture2D" },
-        { "vOutColor", "gl_FragColor" },
+        { "get_input_location", (InvokeFunc)get_input_location },
+        { "get_binding_index", (InvokeFunc)get_binding_index },
     };
     processor.populate(context);
     auto init = std::make_shared<Ship::ResourceInitData>();
@@ -264,31 +291,31 @@ static std::string llgl_build_fs_shader(const CCFeatures& cc_features) {
     processor.load(*shader);
     processor.bind_include_loader(llgl_opengl_include_fs);
     auto result = processor.process();
-    SPDLOG_INFO("=========== FRAGMENT SHADER ============");
-    SPDLOG_INFO(result);
-    SPDLOG_INFO("========================================");
+    // SPDLOG_INFO("=========== FRAGMENT SHADER ============");
+    // // print line per line with number
+    // size_t line_num = 0;
+    // for (const auto& line : StringHelper::Split(result, "\n")) {
+    //     printf("%zu: %s\n", line_num, line.c_str());
+    //     line_num++;
+    // }
+    // SPDLOG_INFO("========================================");
     return result;
 }
 
-static size_t num_floats = 0;
-
-prism::ContextTypes* llgl_update_floats(prism::ContextTypes* num) {
-    num_floats += std::get<int>(*num);
-    return nullptr;
-}
-
 static std::string llgl_build_vs_shader(const CCFeatures& cc_features) {
-    num_floats = 4;
     prism::Processor processor;
+
+    input_index = 0;
+    output_index = 0;
+
     prism::ContextItems context = { { "o_textures", M_ARRAY(cc_features.used_textures, bool, 2) },
                                     { "o_clamp", M_ARRAY(cc_features.clamp, bool, 2, 2) },
                                     { "o_fog", cc_features.opt_fog },
                                     { "o_grayscale", cc_features.opt_grayscale },
                                     { "o_alpha", cc_features.opt_alpha },
                                     { "o_inputs", cc_features.num_inputs },
-                                    { "update_floats", (InvokeFunc)llgl_update_floats },
-                                    { "attr", "attribute" },
-                                    { "out", "varying" } };
+                                    { "get_input_location", (InvokeFunc)get_input_location },
+                                    { "get_output_location", (InvokeFunc)get_output_location } };
     processor.populate(context);
 
     auto init = std::make_shared<Ship::ResourceInitData>();
@@ -307,17 +334,123 @@ static std::string llgl_build_vs_shader(const CCFeatures& cc_features) {
     processor.load(*shader);
     processor.bind_include_loader(llgl_opengl_include_fs);
     auto result = processor.process();
-    SPDLOG_INFO("=========== VERTEX SHADER ============");
-    SPDLOG_INFO(result);
-    SPDLOG_INFO("========================================");
+    // SPDLOG_INFO("=========== VERTEX SHADER ============");
+    // // print line per line with number
+    // size_t line_num = 0;
+    // for (const auto& line : StringHelper::Split(result, "\n")) {
+    //     printf("%zu: %s\n", line_num, line.c_str());
+    //     line_num++;
+    // }
+    // SPDLOG_INFO("========================================");
     return result;
+}
+
+LLGL::PipelineState* create_pipeline(LLGL::RenderSystemPtr& llgl_renderer, LLGL::SwapChain* llgl_swapChain,
+                                     LLGL::VertexFormat& vertexFormat, std::string vertShaderSource,
+                                     std::string fragShaderSource, LLGL::PipelineLayout* pipelineLayout = nullptr) {
+    const auto& languages = llgl_renderer->GetRenderingCaps().shadingLanguages;
+    LLGL::ShaderDescriptor vertShaderDesc, fragShaderDesc;
+
+    std::variant<std::string, std::vector<uint32_t>> vertShaderSourceC, fragShaderSourceC;
+
+    generate_shader_from_string(vertShaderDesc, fragShaderDesc, languages, vertexFormat, vertShaderSource,
+                                fragShaderSource, vertShaderSourceC, fragShaderSourceC);
+
+    // Specify vertex attributes for vertex shader
+    vertShaderDesc.vertex.inputAttribs = vertexFormat.attributes;
+
+    LLGL::Shader* vertShader = llgl_renderer->CreateShader(vertShaderDesc);
+    LLGL::Shader* fragShader = llgl_renderer->CreateShader(fragShaderDesc);
+
+    if (const LLGL::Report* report = vertShader->GetReport()) {
+        if (std::holds_alternative<std::string>(vertShaderSourceC)) {
+            int line_num = 0;
+            for (const auto& line : StringHelper::Split(std::get<std::string>(vertShaderSourceC), "\n")) {
+                printf("%d: %s\n", line_num, line.c_str());
+                line_num++;
+            }
+        }
+        SPDLOG_ERROR("vertShader: {}", report->GetText());
+    }
+    
+    if (const LLGL::Report* report = fragShader->GetReport()) {
+        if (std::holds_alternative<std::string>(fragShaderSourceC)) {
+            int line_num = 0;
+            for (const auto& line : StringHelper::Split(std::get<std::string>(fragShaderSourceC), "\n")) {
+                printf("%d: %s\n", line_num, line.c_str());
+                line_num++;
+            }
+        }
+        SPDLOG_ERROR("fragShader: {}", report->GetText());
+    }
+
+    // Create graphics pipeline
+    LLGL::PipelineState* pipeline = nullptr;
+    LLGL::PipelineCache* pipelineCache = nullptr;
+
+    LLGL::GraphicsPipelineDescriptor pipelineDesc;
+    {
+        pipelineDesc.vertexShader = vertShader;
+        pipelineDesc.fragmentShader = fragShader;
+        pipelineDesc.renderPass = llgl_swapChain->GetRenderPass();
+        pipelineDesc.pipelineLayout = pipelineLayout;
+    }
+
+    // Create graphics PSO
+    pipeline = llgl_renderer->CreatePipelineState(pipelineDesc, pipelineCache);
+
+    // Link shader program and check for errors
+    if (const LLGL::Report* report = pipeline->GetReport()) {
+        if (report->HasErrors()) {
+            const char* a = report->GetText();
+            SPDLOG_ERROR(a);
+            throw std::runtime_error("Failed to link shader program");
+        }
+    }
+    return pipeline;
 }
 
 struct ShaderProgram* gfx_llgl_create_and_load_new_shader(uint64_t shader_id0, uint32_t shader_id1) {
     CCFeatures cc_features;
     gfx_cc_get_features(shader_id0, shader_id1, &cc_features);
-    const auto fs_buf = llgl_build_fs_shader(cc_features);
+
+    LLGL::VertexFormat vertexFormat;
+
+    vertexFormat.AppendAttribute({ "aVtxPos", LLGL::Format::RGBA32Float });
+
+    for (int i = 0; i < 2; i++) {
+        if (cc_features.used_textures[i]) {
+            vertexFormat.AppendAttribute({ "aTexCoord" + std::to_string(i), LLGL::Format::RG32Float });
+            for (int j = 0; j < 2; j++) {
+                if (cc_features.clamp[i][j]) {
+                    if (j == 0) {
+                        vertexFormat.AppendAttribute({ "aTexClampS" + std::to_string(i), LLGL::Format::R32Float });
+                    } else {
+                        vertexFormat.AppendAttribute({ "aTexClampT" + std::to_string(i), LLGL::Format::R32Float });
+                    }
+                }
+            }
+        }
+    }
+
+    if (cc_features.opt_fog) {
+        vertexFormat.AppendAttribute({ "aFogCoord", LLGL::Format::RGBA32Float });
+    }
+    if (cc_features.opt_grayscale) {
+        vertexFormat.AppendAttribute({ "aGrayscaleColor", LLGL::Format::RGBA32Float });
+    }
+
+    for (int i = 0; i < cc_features.num_inputs; i++) {
+        if (cc_features.opt_alpha) {
+            vertexFormat.AppendAttribute({ "aInput" + std::to_string(i + 1), LLGL::Format::RGBA32Float });
+        } else {
+            vertexFormat.AppendAttribute({ "aInput" + std::to_string(i + 1), LLGL::Format::RGB32Float });
+        }
+    }
+
     const auto vs_buf = llgl_build_vs_shader(cc_features);
+    const auto fs_buf = llgl_build_fs_shader(cc_features);
+    auto pipeline = create_pipeline(llgl_renderer, llgl_swapChain, vertexFormat, vs_buf, fs_buf);
     return nullptr;
 }
 

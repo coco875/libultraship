@@ -2,51 +2,49 @@
 
 #version 450 core
 
-attribute vec4 aVtxPos;
+layout(location = @{get_input_location()}) in vec4 aVtxPos;
 
 @for(i in 0..2)
     @if(o_textures[i])
-        attribute vec2 aTexCoord@{i};
-        varying vec2 vTexCoord@{i};
-        @{update_floats(2)}
+        layout(location = @{get_input_location()}) in vec2 aTexCoord@{i};
+        layout(location = @{get_output_location()}) out vec2 vTexCoord@{i};
         @for(j in 0..2)
             @if(o_clamp[i][j])
                 @if(j == 0)
-                    attribute float aTexClampS@{i};
-                    varying float vTexClampS@{i};
+                    layout(location = @{get_input_location()}) in float aTexClampS@{i};
+                    layout(location = @{get_output_location()}) out float vTexClampS@{i};
                 @else
-                    attribute float aTexClampT@{i};
-                    varying float vTexClampT@{i};
+                    layout(location = @{get_input_location()}) in float aTexClampT@{i};
+                    layout(location = @{get_output_location()}) out float vTexClampT@{i};
                 @end
-                @{update_floats(1)}
             @end
         @end
     @end
 @end
 
 @if(o_fog)
-    attribute vec4 aFog;
-    varying vec4 vFog;
-    @{update_floats(4)}
+    layout(location = @{get_input_location()}) in vec4 aFog;
+    layout(location = @{get_output_location()}) out vec4 vFog;
 @end
 
 @if(o_grayscale)
-    attribute vec4 aGrayscaleColor;
-    varying vec4 vGrayscaleColor;
-    @{update_floats(4)}
+    layout(location = @{get_input_location()}) in vec4 aGrayscaleColor;
+    layout(location = @{get_output_location()}) out vec4 vGrayscaleColor;
 @end
 
 @for(i in 0..o_inputs)
     @if(o_alpha)
-        attribute vec4 aInput@{i + 1};
-        varying vec4 vInput@{i + 1};
-        @{update_floats(4)}
+        layout(location = @{get_input_location()}) in vec4 aInput@{i + 1};
+        layout(location = @{get_output_location()}) out vec4 vInput@{i + 1};
     @else
-        attribute vec3 aInput@{i + 1};
-        varying vec3 vInput@{i + 1};
-        @{update_floats(3)}
+        layout(location = @{get_input_location()}) in vec3 aInput@{i + 1};
+        layout(location = @{get_output_location()}) out vec3 vInput@{i + 1};
     @end
 @end
+
+out gl_PerVertex {
+    vec4 gl_Position;
+};
 
 void main() {
      @for(i in 0..2)
@@ -73,7 +71,4 @@ void main() {
         vInput@{i + 1} = aInput@{i + 1};
     @end
     gl_Position = aVtxPos;
-    @if(opengles)
-        gl_Position.z *= 0.3f;
-    @end
 }

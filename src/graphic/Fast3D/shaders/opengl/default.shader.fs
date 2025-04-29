@@ -2,49 +2,49 @@
 
 #version 450 core
 
-@if(core_opengl)
-out vec4 vOutColor;
-@end
+@if(o_textures[0]) layout(binding = @{get_binding_index()}) uniform sampler2D uTex0;
+@if(o_textures[1]) layout(binding = @{get_binding_index()}) uniform sampler2D uTex1;
+
+@if(o_masks[0]) layout(binding = @{get_binding_index()}) uniform sampler2D uTexMask0;
+@if(o_masks[1]) layout(binding = @{get_binding_index()}) uniform sampler2D uTexMask1;
+
+@if(o_blend[0]) layout(binding = @{get_binding_index()}) uniform sampler2D uTexBlend0;
+@if(o_blend[1]) layout(binding = @{get_binding_index()}) uniform sampler2D uTexBlend1;
+
+layout(std140, binding = @{get_binding_index()}) uniform FrameCount {
+    int frame_count;
+};
+layout(std140, binding = @{get_binding_index()}) uniform NoiseScale {
+    float noise_scale;
+};
 
 @for(i in 0..2)
     @if(o_textures[i])
-        attribute vec2 vTexCoord@{i};
+        layout(location = @{get_input_location()}) in vec2 vTexCoord@{i};
         @for(j in 0..2)
             @if(o_clamp[i][j])
                 @if(j == 0)
-                    attribute float vTexClampS@{i};
+                    layout(location = @{get_input_location()}) in float vTexClampS@{i};
                 @else
-                    attribute float vTexClampT@{i};
+                    layout(location = @{get_input_location()}) in float vTexClampT@{i};
                 @end
             @end
         @end
     @end
 @end
 
-@if(o_fog) attribute vec4 vFog;
-@if(o_grayscale) attribute vec4 vGrayscaleColor;
+@if(o_fog) layout(location = @{get_input_location()}) in vec4 vFog;
+@if(o_grayscale) layout(location = @{get_input_location()}) in vec4 vGrayscaleColor;
 
 @for(i in 0..o_inputs)
     @if(o_alpha)
-        attribute vec4 vInput@{i + 1};
+        layout(location = @{get_input_location()}) in vec4 vInput@{i + 1};
     @else
-        attribute vec3 vInput@{i + 1};
+        layout(location = @{get_input_location()}) in vec3 vInput@{i + 1};
     @end
 @end
 
-@if(o_textures[0]) uniform sampler2D uTex0;
-@if(o_textures[1]) uniform sampler2D uTex1;
-
-@if(o_masks[0]) uniform sampler2D uTexMask0;
-@if(o_masks[1]) uniform sampler2D uTexMask1;
-
-@if(o_blend[0]) uniform sampler2D uTexBlend0;
-@if(o_blend[1]) uniform sampler2D uTexBlend1;
-
-uniform int frame_count;
-uniform float noise_scale;
-
-#define TEX_OFFSET(off) @{texture}(tex, texCoord - off / texSize)
+#define TEX_OFFSET(off) texture(tex, texCoord - off / texSize)
 #define WRAP(x, low, high) mod((x)-(low), (high)-(low)) + (low)
 
 float random(in vec3 value) {
@@ -74,9 +74,11 @@ vec4 hookTexture2D(in sampler2D tex, in vec2 uv, in vec2 texSize) {
 }
 @else
 vec4 hookTexture2D(in sampler2D tex, in vec2 uv, in vec2 texSize) {
-    return @{texture}(tex, uv);
+    return texture(tex, uv);
 }
 @end
+
+layout(location = 0) out vec4 fragColor;
 
 void main() {
     @for(i in 0..2)
@@ -191,12 +193,12 @@ void main() {
         @if(o_invisible)
             texel.a = 0.0;
         @end
-        @{vOutColor} = texel;
+        fragColor = texel;
     @else
-        @{vOutColor} = vec4(texel, 1.0);
+        fragColor = vec4(texel, 1.0);
     @end
 
     @if(srgb_mode)
-        @{vOutColor} = fromLinear(@{vOutColor});
+        fragColor = fromLinear(fragColor);
     @end
 }
