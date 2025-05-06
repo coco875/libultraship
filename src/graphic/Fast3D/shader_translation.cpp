@@ -331,6 +331,7 @@ void generate_shader_from_string(LLGL::ShaderDescriptor& vertShaderDesc, LLGL::S
                                  std::string vertShaderSource, std::string fragShaderSource,
                                  std::variant<std::string, std::vector<uint32_t>>& vertShader,
                                  std::variant<std::string, std::vector<uint32_t>>& fragShader) {
+    glslang::InitializeProcess();
     char* vertShaderSourceC = vertShaderSource.data();
     auto vertShaderGlslang = create_shader(EShLangVertex, "", &vertShaderSourceC);
     char* fragShaderSourceC = fragShaderSource.data();
@@ -472,8 +473,6 @@ void generate_shader(LLGL::ShaderDescriptor& vertShaderDesc, LLGL::ShaderDescrip
                      const std::vector<LLGL::ShadingLanguage>& languages, LLGL::VertexFormat& vertexFormat,
                      std::string name_shader, std::variant<std::string, std::vector<uint32_t>>& vertShader,
                      std::variant<std::string, std::vector<uint32_t>>& fragShader) {
-    glslang::InitializeProcess();
-
 #ifdef WIN32
     std::filesystem::path shaderPath = "../../shader";
 #else
