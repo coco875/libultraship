@@ -607,7 +607,7 @@ void GfxWindowBackendSDL2::HandleSingleEvent(SDL_Event& event) {
 #ifdef __SWITCH__
                     Ship::Switch::GetDisplaySize(&mWindowWidth, &mWindowHeight);
 #elif __APPLE__
-                    SDL_GetWindowSize(wnd, &mWindowWidth, &mWindowHeight);
+                    SDL_GetWindowSize(mWnd, &mWindowWidth, &mWindowHeight);
 #else
                     SDL_GL_GetDrawableSize(mWnd, &mWindowWidth, &mWindowHeight);
 #endif
