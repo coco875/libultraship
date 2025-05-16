@@ -6,9 +6,15 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include "install_config.h"
 #include "graphic/Fast3D/debug/GfxDebugger.h"
+#include "config/ConsoleVariable.h"
+#include "controller/controldeck/ControlDeck.h"
+#include "debug/CrashHandler.h"
+#include "window/FileDropMgr.h"
 
 #ifdef _WIN32
+#include <libloaderapi.h>
 #include <tchar.h>
+#include <windows.h>
 #endif
 
 #ifdef __APPLE__
@@ -87,7 +93,8 @@ bool Context::Init(const std::vector<std::string>& archivePaths, const std::unor
                    std::shared_ptr<ControlDeck> controlDeck) {
     return InitLogging() && InitConfiguration() && InitConsoleVariables() &&
            InitResourceManager(archivePaths, validHashes, reservedThreadCount) && InitControlDeck(controlDeck) &&
-           InitCrashHandler() && InitConsole() && InitWindow(window) && InitAudio(audioSettings) && InitGfxDebugger();
+           InitCrashHandler() && InitConsole() && InitWindow(window) && InitAudio(audioSettings) && InitGfxDebugger() &&
+           InitFileDropMgr();
 }
 
 bool Context::InitLogging() {
@@ -335,6 +342,19 @@ bool Context::InitWindow(std::shared_ptr<Window> window) {
     return true;
 }
 
+bool Context::InitFileDropMgr() {
+    if (GetFileDropMgr() != nullptr) {
+        return true;
+    }
+
+    mFileDropMgr = std::make_shared<FileDropMgr>();
+    if (GetFileDropMgr() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize file drop manager");
+        return false;
+    }
+    return true;
+}
+
 std::shared_ptr<ConsoleVariable> Context::GetConsoleVariables() {
     return mConsoleVariables;
 }
@@ -375,6 +395,10 @@ std::shared_ptr<Fast::GfxDebugger> Context::GetGfxDebugger() {
     return mGfxDebugger;
 }
 
+std::shared_ptr<FileDropMgr> Context::GetFileDropMgr() {
+    return mFileDropMgr;
+}
+
 std::string Context::GetName() {
     return mName;
 }
@@ -412,6 +436,23 @@ std::string Context::GetAppBundlePath() {
 
         // Find the last '/' and remove everything after it
         long unsigned int lastSlash = progpath.find_last_of("/");
+        if (lastSlash != std::string::npos) {
+            progpath.erase(lastSlash);
+        }
+
+        return progpath;
+    }
+#endif
+
+#ifdef _WIN32
+    std::string progpath(MAX_PATH, '\0');
+
+    int len = GetModuleFileNameA(NULL, &progpath[0], progpath.size());
+    if (len != 0 && len < progpath.size()) {
+        progpath.resize(len);
+
+        // Find the last '\' and remove everything after it
+        long unsigned int lastSlash = progpath.find_last_of("\\");
         if (lastSlash != std::string::npos) {
             progpath.erase(lastSlash);
         }

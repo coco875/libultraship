@@ -5,18 +5,26 @@
 #include <unordered_set>
 #include <vector>
 #include <unordered_map>
-#include <spdlog/spdlog.h>
-#include "config/ConfigVersion.h"
-#include "resource/ResourceManager.h"
-#include "controller/controldeck/ControlDeck.h"
-#include "debug/CrashHandler.h"
 #include "audio/Audio.h"
-#include "window/Window.h"
-#include "config/ConsoleVariable.h"
-#include "debug/Console.h"
-#include "graphic/Fast3D/debug/GfxDebugger.h"
+
+namespace spdlog {
+class logger;
+}
+
+namespace Fast {
+class GfxDebugger;
+}
 
 namespace Ship {
+
+class Console;
+class ConsoleVariable;
+class ControlDeck;
+class CrashHandler;
+class Window;
+class Config;
+class ResourceManager;
+class FileDropMgr;
 
 class Context {
   public:
@@ -53,6 +61,7 @@ class Context {
     std::shared_ptr<Console> GetConsole();
     std::shared_ptr<Audio> GetAudio();
     std::shared_ptr<Fast::GfxDebugger> GetGfxDebugger();
+    std::shared_ptr<FileDropMgr> GetFileDropMgr();
 
     std::string GetName();
     std::string GetShortName();
@@ -68,6 +77,7 @@ class Context {
     bool InitGfxDebugger();
     bool InitConsole();
     bool InitWindow(std::shared_ptr<Window> window = nullptr);
+    bool InitFileDropMgr();
 
   protected:
     Context() = default;
@@ -85,6 +95,7 @@ class Context {
     std::shared_ptr<Console> mConsole;
     std::shared_ptr<Audio> mAudio;
     std::shared_ptr<Fast::GfxDebugger> mGfxDebugger;
+    std::shared_ptr<FileDropMgr> mFileDropMgr;
 
     std::string mConfigFilePath;
     std::string mMainPath;
