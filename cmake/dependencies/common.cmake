@@ -11,7 +11,7 @@ set(imgui_apply_patch_command ${CMAKE_COMMAND} -Dpatch_file=${imgui_fixes_and_co
 FetchContent_Declare(
     ImGui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.91.6-docking
+    GIT_TAG v1.91.9b-docking
     PATCH_COMMAND ${imgui_apply_patch_command}
 #    PATCH_COMMAND ${imgui_apply_switchpatch_if_needed}
 )
@@ -122,6 +122,6 @@ option(PRISM_STANDALONE "Build prism as a standalone library" OFF)
 FetchContent_Declare(
     prism
     GIT_REPOSITORY https://github.com/KiritoDv/prism-processor.git
-    GIT_TAG 493974843e910d0fac4e3bb1ec52656728b875b4
+    GIT_TAG 7ae724a6fb7df8cbf547445214a1a848aefef747
 )
 FetchContent_MakeAvailable(prism)

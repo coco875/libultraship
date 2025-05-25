@@ -1,19 +1,8 @@
-From 7cd9b89560b66b992db9fd0e620c2d28ad9a9645 Mon Sep 17 00:00:00 2001
-From: briaguya <70942617+briaguya-ai@users.noreply.github.com>
-Date: Fri, 10 Jan 2025 04:55:07 -0500
-Subject: [PATCH] Combined SDL gamepad fix, config updates, and SWITCH-IMGUI changes
-
----
- backends/imgui_impl_sdl2.cpp | 3 ---
- imconfig.h                   | 10 ++++++++++
- imgui.cpp                    | 5 +++++
- 3 files changed, 15 insertions(+), 3 deletions(-)
-
 diff --git a/backends/imgui_impl_sdl2.cpp b/backends/imgui_impl_sdl2.cpp
-index 23f12796..a7fef045 100644
+index 0be2f2c6..c0aa79af 100644
 --- a/backends/imgui_impl_sdl2.cpp
 +++ b/backends/imgui_impl_sdl2.cpp
-@@ -816,9 +816,6 @@ static void ImGui_ImplSDL2_UpdateGamepads()
+@@ -755,9 +755,6 @@ static void ImGui_ImplSDL2_UpdateGamepads()
          bd->WantUpdateGamepadsList = false;
      }
  
@@ -23,12 +12,11 @@ index 23f12796..a7fef045 100644
      io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad;
      if (bd->Gamepads.Size == 0)
          return;
-
 diff --git a/imconfig.h b/imconfig.h
-index 8f8bc3b9..e1f2a1a6 100644
+index a1e29e84..a3bd33ef 100644
 --- a/imconfig.h
 +++ b/imconfig.h
-@@ -111,7 +111,7 @@
+@@ -110,7 +110,7 @@
          operator MyVec4() const { return MyVec4(x,y,z,w); }
  */
  //---- ...Or use Dear ImGui's own very basic math operators.
@@ -37,7 +25,7 @@ index 8f8bc3b9..e1f2a1a6 100644
  
  //---- Use 32-bit vertex indices (default is 16-bit) is one way to allow large meshes with more than 64K vertices.
  // Your renderer backend will need to support it (most example renderer backends support both 16/32-bit indices).
-@@ -140,3 +140,12 @@ namespace ImGui
+@@ -139,3 +139,12 @@ namespace ImGui
      void MyFunction(const char* name, MyMatrix44* mtx);
  }
  */
@@ -50,15 +38,19 @@ index 8f8bc3b9..e1f2a1a6 100644
 +#define GL_GLEXT_PROTOTYPES 1
 +#include <glad/glad.h>
 +#endif
-
 diff --git a/imgui.cpp b/imgui.cpp
-index 947aa9c9..e1f2b1c2 100644
+index 7ec19227..5a92c90e 100644
 --- a/imgui.cpp
 +++ b/imgui.cpp
-@@ -20612,6 +20612,10 @@
+@@ -15155,9 +15155,15 @@ static void Platform_SetClipboardTextFn_DefaultImpl(ImGuiContext* ctx, const cha
+ #if defined(__APPLE__) && TARGET_OS_IPHONE
  #define IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
  #endif
- 
++
+ #if defined(__3DS__)
+ #define IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
+ #endif
++
 +#if defined(__SWITCH__)
 +#define IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
 +#endif
@@ -66,7 +58,7 @@ index 947aa9c9..e1f2b1c2 100644
  #if defined(_WIN32) && defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
  #define IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
  #endif
-@@ -20632,6 +20636,7 @@
+@@ -15182,6 +15188,7 @@ static bool Platform_OpenInShellFn_DefaultImpl(ImGuiContext*, const char* path)
  #include <unistd.h>
  static bool Platform_OpenInShellFn_DefaultImpl(ImGuiContext*, const char* path)
  {
@@ -74,5 +66,3 @@ index 947aa9c9..e1f2b1c2 100644
  #if defined(__APPLE__)
      const char* args[] { "open", "--", path, NULL };
  #else
--- 
-2.47.1
