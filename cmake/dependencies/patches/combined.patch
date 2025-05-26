@@ -1,8 +1,27 @@
 diff --git a/backends/imgui_impl_sdl2.cpp b/backends/imgui_impl_sdl2.cpp
-index 0be2f2c6..c0aa79af 100644
+index f3a31c5c..405fede6 100644
 --- a/backends/imgui_impl_sdl2.cpp
 +++ b/backends/imgui_impl_sdl2.cpp
-@@ -755,9 +755,6 @@ static void ImGui_ImplSDL2_UpdateGamepads()
+@@ -122,7 +122,7 @@
+ #include <emscripten/em_js.h>
+ #endif
+ 
+-#if SDL_VERSION_ATLEAST(2,0,4) && !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && !(defined(__APPLE__) && TARGET_OS_IOS) && !defined(__amigaos4__)
++#if SDL_VERSION_ATLEAST(2,0,4) && !defined(__EMSCRIPTEN__) && !defined(__SWITCH__) && !defined(__ANDROID__) && !(defined(__APPLE__) && TARGET_OS_IOS) && !defined(__amigaos4__)
+ #define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE    1
+ #else
+ #define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE    0
+@@ -133,7 +133,9 @@
+ #define SDL_HAS_PER_MONITOR_DPI             SDL_VERSION_ATLEAST(2,0,4)
+ #define SDL_HAS_VULKAN                      SDL_VERSION_ATLEAST(2,0,6)
+ #define SDL_HAS_DISPLAY_EVENT               SDL_VERSION_ATLEAST(2,0,9)
++#ifndef __SWITCH__
+ #define SDL_HAS_OPEN_URL                    SDL_VERSION_ATLEAST(2,0,14)
++#endif
+ #define SDL_HAS_SHOW_WINDOW_ACTIVATION_HINT SDL_VERSION_ATLEAST(2,0,18)
+ #if SDL_HAS_VULKAN
+ #include <SDL_vulkan.h>
+@@ -845,9 +847,6 @@ static void ImGui_ImplSDL2_UpdateGamepads()
          bd->WantUpdateGamepadsList = false;
      }
  
@@ -39,10 +58,10 @@ index a1e29e84..a3bd33ef 100644
 +#include <glad/glad.h>
 +#endif
 diff --git a/imgui.cpp b/imgui.cpp
-index 7ec19227..5a92c90e 100644
+index 573efe24..b4a572f3 100644
 --- a/imgui.cpp
 +++ b/imgui.cpp
-@@ -15155,9 +15155,15 @@ static void Platform_SetClipboardTextFn_DefaultImpl(ImGuiContext* ctx, const cha
+@@ -20792,9 +20792,15 @@ static void Platform_SetClipboardTextFn_DefaultImpl(ImGuiContext* ctx, const cha
  #if defined(__APPLE__) && TARGET_OS_IPHONE
  #define IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
  #endif
@@ -58,7 +77,7 @@ index 7ec19227..5a92c90e 100644
  #if defined(_WIN32) && defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
  #define IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
  #endif
-@@ -15182,6 +15188,7 @@ static bool Platform_OpenInShellFn_DefaultImpl(ImGuiContext*, const char* path)
+@@ -20819,6 +20825,7 @@ static bool Platform_OpenInShellFn_DefaultImpl(ImGuiContext*, const char* path)
  #include <unistd.h>
  static bool Platform_OpenInShellFn_DefaultImpl(ImGuiContext*, const char* path)
  {
