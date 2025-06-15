@@ -129,6 +129,7 @@ namespace Fast {
 class GfxWindowBackend;
 
 constexpr size_t MAX_SEGMENT_POINTERS = 16;
+constexpr size_t MAX_TRI_BUFFER = 256;
 
 struct GfxExecStack {
     // This is a dlist stack used to handle dlist calls.
