@@ -129,7 +129,6 @@ namespace Fast {
 class GfxWindowBackend;
 
 constexpr size_t MAX_SEGMENT_POINTERS = 16;
-constexpr size_t MAX_TRI_BUFFER = 256;
 
 struct GfxExecStack {
     // This is a dlist stack used to handle dlist calls.
@@ -491,8 +490,7 @@ class Interpreter {
 
     unsigned int mMsaaLevel = 1;
     bool mDroppedFrame{};
-    float* mBufVbo; // 3 vertices in a triangle and 32 floats per vtx
-    size_t mBufVboLen{};
+    std::vector<float> mBufVbo; // 3 vertices in a triangle and 32 floats per vtx
     size_t mBufVboNumTris{};
     GfxWindowBackend* mWapi = nullptr;
     GfxRenderingAPILLGL* mRapi = nullptr;

@@ -106,13 +106,11 @@ static std::string GetPathWithoutFileName(char* filePath) {
 Interpreter::Interpreter() {
     mRsp = new RSP();
     mRdp = new RDP();
-    mBufVbo = new float[MAX_TRI_BUFFER * (32 * 3)];
 }
 
 Interpreter::~Interpreter() {
     delete mRsp;
     delete mRdp;
-    delete[] mBufVbo;
 }
 
 static std::weak_ptr<Interpreter> mInstance;
@@ -122,9 +120,9 @@ void GfxSetInstance(std::shared_ptr<Interpreter> gfx) {
 }
 
 void Interpreter::Flush() {
-    if (mBufVboLen > 0) {
-        mRapi->DrawTriangles(mBufVbo, mBufVboLen, mBufVboNumTris);
-        mBufVboLen = 0;
+    if (mBufVbo.size() > 0) {
+        mRapi->DrawTriangles(mBufVbo.data(), mBufVbo.size(), mBufVboNumTris);
+        mBufVbo.clear();
         mBufVboNumTris = 0;
     }
 }
@@ -1619,10 +1617,10 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
             z = (z + w) / 2.0f;
         }
 
-        mBufVbo[mBufVboLen++] = v_arr[i]->x;
-        mBufVbo[mBufVboLen++] = clip_parameters.invertY ? -v_arr[i]->y : v_arr[i]->y;
-        mBufVbo[mBufVboLen++] = z;
-        mBufVbo[mBufVboLen++] = w;
+        mBufVbo.push_back(v_arr[i]->x);
+        mBufVbo.push_back(clip_parameters.invertY ? -v_arr[i]->y : v_arr[i]->y);
+        mBufVbo.push_back(z);
+        mBufVbo.push_back(w);
 
         for (int t = 0; t < 2; t++) {
             if (!usedTextures[t]) {
@@ -1659,33 +1657,33 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
                 }
             }
 
-            mBufVbo[mBufVboLen++] = u / tex_width[t];
-            mBufVbo[mBufVboLen++] = v / tex_height[t];
+            mBufVbo.push_back(u / tex_width[t]);
+            mBufVbo.push_back(v / tex_height[t]);
 
             bool clampS = tm & (1 << 2 * t);
             bool clampT = tm & (1 << 2 * t + 1);
 
             if (clampS) {
-                mBufVbo[mBufVboLen++] = (tex_width2[t] - 0.5f) / tex_width[t];
+                mBufVbo.push_back((tex_width2[t] - 0.5f) / tex_width[t]);
             }
 
             if (clampT) {
-                mBufVbo[mBufVboLen++] = (tex_height2[t] - 0.5f) / tex_height[t];
+                mBufVbo.push_back((tex_height2[t] - 0.5f) / tex_height[t]);
             }
         }
 
         if (use_fog) {
-            mBufVbo[mBufVboLen++] = mRdp->fog_color.r / 255.0f;
-            mBufVbo[mBufVboLen++] = mRdp->fog_color.g / 255.0f;
-            mBufVbo[mBufVboLen++] = mRdp->fog_color.b / 255.0f;
-            mBufVbo[mBufVboLen++] = v_arr[i]->color.a / 255.0f; // fog factor (not alpha)
+            mBufVbo.push_back(mRdp->fog_color.r / 255.0f);
+            mBufVbo.push_back(mRdp->fog_color.g / 255.0f);
+            mBufVbo.push_back(mRdp->fog_color.b / 255.0f);
+            mBufVbo.push_back(v_arr[i]->color.a / 255.0f); // fog factor (not alpha)
         }
 
         if (use_grayscale) {
-            mBufVbo[mBufVboLen++] = mRdp->grayscale_color.r / 255.0f;
-            mBufVbo[mBufVboLen++] = mRdp->grayscale_color.g / 255.0f;
-            mBufVbo[mBufVboLen++] = mRdp->grayscale_color.b / 255.0f;
-            mBufVbo[mBufVboLen++] = mRdp->grayscale_color.a / 255.0f; // lerp interpolation factor (not alpha)
+            mBufVbo.push_back(mRdp->grayscale_color.r / 255.0f);
+            mBufVbo.push_back(mRdp->grayscale_color.g / 255.0f);
+            mBufVbo.push_back(mRdp->grayscale_color.b / 255.0f);
+            mBufVbo.push_back(mRdp->grayscale_color.a / 255.0f); // lerp interpolation factor (not alpha)
         }
 
         for (int j = 0; j < numInputs; j++) {
@@ -1746,15 +1744,15 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
                         break;
                 }
                 if (k == 0) {
-                    mBufVbo[mBufVboLen++] = color->r / 255.0f;
-                    mBufVbo[mBufVboLen++] = color->g / 255.0f;
-                    mBufVbo[mBufVboLen++] = color->b / 255.0f;
+                    mBufVbo.push_back(color->r / 255.0f);
+                    mBufVbo.push_back(color->g / 255.0f);
+                    mBufVbo.push_back(color->b / 255.0f);
                 } else {
                     if (use_fog && color == &v_arr[i]->color) {
                         // Shade alpha is 100% for fog
-                        mBufVbo[mBufVboLen++] = 1.0f;
+                        mBufVbo.push_back(1.0f);
                     } else {
-                        mBufVbo[mBufVboLen++] = color->a / 255.0f;
+                        mBufVbo.push_back(color->a / 255.0f);
                     }
                 }
             }
@@ -1766,11 +1764,11 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
         // mBufVbo[mBufVboLen++] = color->b / 255.0f;
         // mBufVbo[mBufVboLen++] = color->a / 255.0f;
     }
-
-    if (++mBufVboNumTris == MAX_TRI_BUFFER) {
-        // if (++mBufVbo_num_tris == 1) {
-        Flush();
-    }
+    mBufVboNumTris++;
+    // if (++mBufVboNumTris == MAX_TRI_BUFFER) {
+    //     // if (++mBufVbo_num_tris == 1) {
+    //     Flush();
+    // }
 }
 
 void Interpreter::GfxSpGeometryMode(uint32_t clear, uint32_t set) {

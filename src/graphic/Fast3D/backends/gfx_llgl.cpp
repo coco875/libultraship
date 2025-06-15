@@ -637,11 +637,11 @@ struct ShaderProgram* Fast::GfxRenderingAPILLGL::CreateAndLoadNewShader(uint64_t
     LLGL::BufferDescriptor vboDesc;
     {
         vboDesc.bindFlags = LLGL::BindFlags::VertexBuffer;
-        vboDesc.size = Fast::MAX_TRI_BUFFER * sizeof(float);
+        vboDesc.size = 256 * sizeof(float);
         vboDesc.vertexAttribs = vertexFormat.attributes;
     }
     prg->vertexBuffer = llgl_renderer->CreateBuffer(vboDesc);
-    prg->vertexBufferSize = Fast::MAX_TRI_BUFFER;
+    prg->vertexBufferSize = 256;
     mCurrentShaderProgram = prg;
     return (struct ShaderProgram*)prg;
 }
