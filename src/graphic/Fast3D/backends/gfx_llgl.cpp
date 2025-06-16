@@ -634,14 +634,6 @@ struct ShaderProgram* Fast::GfxRenderingAPILLGL::CreateAndLoadNewShader(uint64_t
     }
     prg->numInputs = cc_features.numInputs;
     prg->vertexFormat = vertexFormat;
-    LLGL::BufferDescriptor vboDesc;
-    {
-        vboDesc.bindFlags = LLGL::BindFlags::VertexBuffer;
-        vboDesc.size = 256 * sizeof(float);
-        vboDesc.vertexAttribs = vertexFormat.attributes;
-    }
-    prg->vertexBuffer = llgl_renderer->CreateBuffer(vboDesc);
-    prg->vertexBufferSize = 256;
     mCurrentShaderProgram = prg;
     return (struct ShaderProgram*)prg;
 }
@@ -780,20 +772,20 @@ void Fast::GfxRenderingAPILLGL::SetUseAlpha(bool use_alpha) {
 }
 
 void Fast::GfxRenderingAPILLGL::DrawTriangles(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris) {
-    if (mCurrentShaderProgram->vertexBufferSize < buf_vbo_len) {
-        garbage_collection_buffers.push_back(mCurrentShaderProgram->vertexBuffer);
-        mCurrentShaderProgram->vertexBuffer = nullptr;
+    if (vertexBufferSize < buf_vbo_len) {
+        garbage_collection_buffers.push_back(vertexBuffer);
+        vertexBuffer = nullptr;
         LLGL::BufferDescriptor vboDesc;
         {
             vboDesc.bindFlags = LLGL::BindFlags::VertexBuffer;
             vboDesc.size = buf_vbo_len * sizeof(float);
-            vboDesc.vertexAttribs = mCurrentShaderProgram->vertexFormat.attributes;
         }
-        mCurrentShaderProgram->vertexBuffer = llgl_renderer->CreateBuffer(vboDesc);
-        mCurrentShaderProgram->vertexBufferSize = buf_vbo_len;
+        vertexBuffer = llgl_renderer->CreateBuffer(vboDesc);
+        vertexBufferSize = buf_vbo_len;
     }
-    llgl_cmdBuffer->UpdateBuffer(*mCurrentShaderProgram->vertexBuffer, 0, buf_vbo, buf_vbo_len * sizeof(float));
-    llgl_cmdBuffer->SetVertexBuffer(*mCurrentShaderProgram->vertexBuffer);
+    llgl_cmdBuffer->UpdateBuffer(*vertexBuffer, 0, buf_vbo, buf_vbo_len * sizeof(float));
+    vertexBuffer->SetVertexAttribs(mCurrentShaderProgram->vertexFormat.attributes);
+    llgl_cmdBuffer->SetVertexBuffer(*vertexBuffer);
     llgl_cmdBuffer->SetPipelineState(
         *mCurrentShaderProgram->pipeline[disable_depth ? 0 : 1][disable_write_depth ? 0 : 1]);
 
@@ -883,6 +875,13 @@ void Fast::GfxRenderingAPILLGL::Init() {
     for (int tile = 0; tile < 6; tile++) {
         current_texture_ids[tile] = 0;
     }
+    LLGL::BufferDescriptor vboDesc;
+    {
+        vboDesc.bindFlags = LLGL::BindFlags::VertexBuffer;
+        vboDesc.size = 256 * sizeof(float);
+    }
+    vertexBuffer = llgl_renderer->CreateBuffer(vboDesc);
+    vertexBufferSize = 256;
 }
 
 void Fast::GfxRenderingAPILLGL::OnResize(void) {

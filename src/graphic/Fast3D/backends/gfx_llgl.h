@@ -36,8 +36,6 @@ struct ShaderProgramLLGL {
     std::optional<int> bindingBlendSampl[2];
     LLGL::VertexFormat vertexFormat;
     LLGL::PipelineState* pipeline[2][2]; // [depth disabled][zmode decal]
-    LLGL::Buffer* vertexBuffer;
-    size_t vertexBufferSize = 0;
 };
 class GfxRenderingAPILLGL {
   public:
@@ -108,6 +106,8 @@ class GfxRenderingAPILLGL {
     LLGL::Buffer* noiseScaleBuffer;
     int current_framebuffer_id = 0;
     GfxWindowBackend* mWindowBackend = nullptr;
+    LLGL::Buffer* vertexBuffer;
+    size_t vertexBufferSize = 0;
 };
 } // namespace Fast
 

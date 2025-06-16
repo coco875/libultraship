@@ -143,8 +143,8 @@ set(llgl_apply_patch_command ${CMAKE_COMMAND} -Dpatch_file=${llgl_patch_file} -D
 
 FetchContent_Declare(
     llgl
-    GIT_REPOSITORY https://github.com/LukasBanana/LLGL.git
-    GIT_TAG 95f961ac9c917cca5e5609f69c32bc5e373d0802
+    GIT_REPOSITORY https://github.com/coco875/LLGL.git
+    GIT_TAG 0f23f55d9c0917bb0291cc748c72fa8185da97bc
     PATCH_COMMAND ${llgl_apply_patch_if_needed}
 )
 FetchContent_MakeAvailable(llgl)
