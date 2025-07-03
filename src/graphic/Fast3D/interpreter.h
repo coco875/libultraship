@@ -412,7 +412,7 @@ class Interpreter {
     void GfxSpPopMatrix(uint32_t count);
     void GfxSpVertex(size_t numVertices, size_t destIndex, const F3DVtx* vertices);
     void GfxSpModifyVertex(uint16_t vtxIdx, uint8_t where, uint32_t val);
-    void GfxSpTri1(std::vector<std::tuple<int, int, int>> vertex_array, bool isRect);
+    void GfxSpTri(std::vector<std::tuple<int, int, int>> vertex_array, bool isRect);
     void GfxSpGeometryMode(uint32_t clear, uint32_t set);
     void GfxSpExtraGeometryMode(uint32_t clear, uint32_t set);
     void GfxSpMovememF3dex2(uint8_t index, uint8_t offset, const void* data);
