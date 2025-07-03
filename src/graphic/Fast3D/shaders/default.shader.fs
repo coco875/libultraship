@@ -47,7 +47,7 @@ layout(std140, binding = @{get_binding_index("noise_scale", "Buffer", "ConstantB
 @end
 
 
-#define TEX_OFFSET(off) texture(tex, texCoord - off / texSize)
+#define TEX_OFFSET(off) texture(sampler2D(tex, sampl), texCoord - off / texSize)
 #define WRAP(x, low, high) mod((x)-(low), (high)-(low)) + (low)
 
 float random(in vec3 value) {
@@ -62,7 +62,7 @@ vec4 fromLinear(vec4 linearRGB){
     return vec4(mix(higher, lower, cutoff), linearRGB.a);
 }
 
-vec4 filter3point(in sampler2D tex, in vec2 texCoord, in vec2 texSize) {
+vec4 filter3point(in texture2D tex, in sampler sampl, in vec2 texCoord, in vec2 texSize) {
     vec2 offset = fract(texCoord*texSize - vec2(0.5));
     offset -= step(1.0, offset.x + offset.y);
     vec4 c0 = TEX_OFFSET(offset);
@@ -73,10 +73,9 @@ vec4 filter3point(in sampler2D tex, in vec2 texCoord, in vec2 texSize) {
 
 vec4 hookTexture2D(in int id, in texture2D tex, in sampler sampl, in vec2 uv, in vec2 texSize) {
 @if(o_three_point_filtering)
-    // ignore the texture filtering setting for now
-    // if(texture_filtering[id] == @{FILTER_THREE_POINT}) {
-    //     return filter3point(tex, uv, texSize);
-    // }
+    if(texture_filtering[id] == @{FILTER_THREE_POINT}) {
+        return filter3point(tex, uv, texSize);
+    }
 @end
     return texture(sampler2D(tex, sampl), uv);
 }
