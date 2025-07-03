@@ -784,8 +784,7 @@ void Fast::GfxRenderingAPILLGL::DrawTriangles(float buf_vbo[], size_t buf_vbo_le
         vertexBufferSize = buf_vbo_len;
     }
     llgl_cmdBuffer->UpdateBuffer(*vertexBuffer, 0, buf_vbo, buf_vbo_len * sizeof(float));
-    vertexBuffer->SetVertexAttribs(mCurrentShaderProgram->vertexFormat.attributes);
-    llgl_cmdBuffer->SetVertexBuffer(*vertexBuffer);
+    llgl_cmdBuffer->SetVertexBuffer(*vertexBuffer, mCurrentShaderProgram->vertexFormat.attributes.size(), mCurrentShaderProgram->vertexFormat.attributes.data());
     llgl_cmdBuffer->SetPipelineState(
         *mCurrentShaderProgram->pipeline[disable_depth ? 0 : 1][disable_write_depth ? 0 : 1]);
 
