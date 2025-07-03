@@ -1348,56 +1348,64 @@ void Interpreter::GfxSpModifyVertex(uint16_t vtx_idx, uint8_t where, uint32_t va
     v->v = t;
 }
 
-void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bool is_rect) {
-    struct LoadedVertex* v1 = &mRsp->loaded_vertices[vtx1_idx];
-    struct LoadedVertex* v2 = &mRsp->loaded_vertices[vtx2_idx];
-    struct LoadedVertex* v3 = &mRsp->loaded_vertices[vtx3_idx];
-    struct LoadedVertex* v_arr[3] = { v1, v2, v3 };
-
-    // if (rand()%2) return;
-
-    if (v1->clip_rej & v2->clip_rej & v3->clip_rej) {
-        // The whole triangle lies outside the visible area
-        return;
-    }
-
+void Interpreter::GfxSpTri1(std::vector<std::tuple<int, int, int>> vertex_array, bool is_rect) {
     const uint32_t cull_both = get_attr(CULL_BOTH);
     const uint32_t cull_front = get_attr(CULL_FRONT);
     const uint32_t cull_back = get_attr(CULL_BACK);
 
-    if ((mRsp->geometry_mode & cull_both) != 0) {
-        float dx1 = v1->x / (v1->w) - v2->x / (v2->w);
-        float dy1 = v1->y / (v1->w) - v2->y / (v2->w);
-        float dx2 = v3->x / (v3->w) - v2->x / (v2->w);
-        float dy2 = v3->y / (v3->w) - v2->y / (v2->w);
-        float cross = dx1 * dy2 - dy1 * dx2;
+    std::vector<LoadedVertex*> vec_vtx;
+    vec_vtx.reserve(vertex_array.size() * 3);
+    for (const auto& vtx : vertex_array) {
+        struct LoadedVertex* v1 = &mRsp->loaded_vertices[std::get<0>(vtx)];
+        struct LoadedVertex* v2 = &mRsp->loaded_vertices[std::get<1>(vtx)];
+        struct LoadedVertex* v3 = &mRsp->loaded_vertices[std::get<2>(vtx)];
 
-        if ((v1->w < 0) ^ (v2->w < 0) ^ (v3->w < 0)) {
-            // If one vertex lies behind the eye, negating cross will give the correct result.
-            // If all vertices lie behind the eye, the triangle will be rejected anyway.
-            cross = -cross;
+        if (v1->clip_rej & v2->clip_rej & v3->clip_rej) {
+            // The whole triangle lies outside the visible area
+            continue;
         }
 
-        // If inverted culling is requested, negate the cross
-        if (ucode_handler_index == UcodeHandlers::ucode_f3dex2 &&
-            (mRsp->extra_geometry_mode & G_EX_INVERT_CULLING) == 1) {
-            cross = -cross;
-        }
+        if ((mRsp->geometry_mode & cull_both) != 0) {
+            float dx1 = v1->x / (v1->w) - v2->x / (v2->w);
+            float dy1 = v1->y / (v1->w) - v2->y / (v2->w);
+            float dx2 = v3->x / (v3->w) - v2->x / (v2->w);
+            float dy2 = v3->y / (v3->w) - v2->y / (v2->w);
+            float cross = dx1 * dy2 - dy1 * dx2;
 
-        auto cull_type = mRsp->geometry_mode & cull_both;
-
-        if (cull_type == cull_front) {
-            if (cross <= 0) {
-                return;
+            if ((v1->w < 0) ^ (v2->w < 0) ^ (v3->w < 0)) {
+                // If one vertex lies behind the eye, negating cross will give the correct result.
+                // If all vertices lie behind the eye, the triangle will be rejected anyway.
+                cross = -cross;
             }
-        } else if (cull_type == cull_back) {
-            if (cross >= 0) {
-                return;
+
+            // If inverted culling is requested, negate the cross
+            if (ucode_handler_index == UcodeHandlers::ucode_f3dex2 &&
+                (mRsp->extra_geometry_mode & G_EX_INVERT_CULLING) == 1) {
+                cross = -cross;
             }
-        } else if (cull_type == cull_both) {
-            // Why is this even an option?
-            return;
+
+            auto cull_type = mRsp->geometry_mode & cull_both;
+
+            if (cull_type == cull_front) {
+                if (cross <= 0) {
+                    continue;
+                }
+            } else if (cull_type == cull_back) {
+                if (cross >= 0) {
+                    continue;
+                }
+            } else if (cull_type == cull_both) {
+                // Why is this even an option?
+                continue;
+            }
         }
+        vec_vtx.push_back(v1);
+        vec_vtx.push_back(v2);
+        vec_vtx.push_back(v3);
+    }
+
+    if (vec_vtx.size() < 3) {
+        return; // Not enough vertices to draw a triangle
     }
 
     bool depth_test = (mRsp->geometry_mode & G_ZBUFFER) == G_ZBUFFER;
@@ -1611,14 +1619,14 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
 
     struct GfxClipParameters clip_parameters = mRapi->GetClipParameters();
 
-    for (int i = 0; i < 3; i++) {
-        float z = v_arr[i]->z, w = v_arr[i]->w;
+    for (int i = 0; i < vec_vtx.size(); i++) {
+        float z = vec_vtx[i]->z, w = vec_vtx[i]->w;
         if (clip_parameters.z_is_from_0_to_1) {
             z = (z + w) / 2.0f;
         }
 
-        mBufVbo.push_back(v_arr[i]->x);
-        mBufVbo.push_back(clip_parameters.invertY ? -v_arr[i]->y : v_arr[i]->y);
+        mBufVbo.push_back(vec_vtx[i]->x);
+        mBufVbo.push_back(clip_parameters.invertY ? -vec_vtx[i]->y : vec_vtx[i]->y);
         mBufVbo.push_back(z);
         mBufVbo.push_back(w);
 
@@ -1626,8 +1634,8 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
             if (!usedTextures[t]) {
                 continue;
             }
-            float u = v_arr[i]->u / 32.0f;
-            float v = v_arr[i]->v / 32.0f;
+            float u = vec_vtx[i]->u / 32.0f;
+            float v = vec_vtx[i]->v / 32.0f;
 
             int shifts = mRdp->texture_tile[mRdp->first_tile_index + t].shifts;
             int shiftt = mRdp->texture_tile[mRdp->first_tile_index + t].shiftt;
@@ -1676,7 +1684,7 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
             mBufVbo.push_back(mRdp->fog_color.r / 255.0f);
             mBufVbo.push_back(mRdp->fog_color.g / 255.0f);
             mBufVbo.push_back(mRdp->fog_color.b / 255.0f);
-            mBufVbo.push_back(v_arr[i]->color.a / 255.0f); // fog factor (not alpha)
+            mBufVbo.push_back(vec_vtx[i]->color.a / 255.0f); // fog factor (not alpha)
         }
 
         if (use_grayscale) {
@@ -1697,7 +1705,7 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
                         color = &mRdp->prim_color;
                         break;
                     case G_CCMUX_SHADE:
-                        color = &v_arr[i]->color;
+                        color = &vec_vtx[i]->color;
                         break;
                     case G_CCMUX_ENVIRONMENT:
                         color = &mRdp->env_color;
@@ -1720,7 +1728,7 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
                     case G_CCMUX_LOD_FRACTION: {
                         if (mRdp->other_mode_l & G_TL_LOD) {
                             // "Hack" that works for Bowser - Peach painting
-                            float distance_frac = (v1->w - 3000.0f) / 3000.0f;
+                            float distance_frac = (vec_vtx[(i/3)*3]->w - 3000.0f) / 3000.0f;
                             if (distance_frac < 0.0f) {
                                 distance_frac = 0.0f;
                             }
@@ -1748,7 +1756,7 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
                     mBufVbo.push_back(color->g / 255.0f);
                     mBufVbo.push_back(color->b / 255.0f);
                 } else {
-                    if (use_fog && color == &v_arr[i]->color) {
+                    if (use_fog && color == &vec_vtx[i]->color) {
                         // Shade alpha is 100% for fog
                         mBufVbo.push_back(1.0f);
                     } else {
@@ -1764,7 +1772,7 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
         // mBufVbo[mBufVboLen++] = color->b / 255.0f;
         // mBufVbo[mBufVboLen++] = color->a / 255.0f;
     }
-    mBufVboNumTris++;
+    mBufVboNumTris += vec_vtx.size() / 3;
     // if (++mBufVboNumTris == MAX_TRI_BUFFER) {
     //     // if (++mBufVbo_num_tris == 1) {
     //     Flush();
@@ -2299,8 +2307,7 @@ void Interpreter::GfxDrawRectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_
     mRdp->viewport_or_scissor_changed = true;
     mRsp->geometry_mode = 0;
 
-    GfxSpTri1(MAX_VERTICES + 0, MAX_VERTICES + 1, MAX_VERTICES + 3, true);
-    GfxSpTri1(MAX_VERTICES + 1, MAX_VERTICES + 2, MAX_VERTICES + 3, true);
+    GfxSpTri1({{MAX_VERTICES + 0, MAX_VERTICES + 1, MAX_VERTICES + 3}, {MAX_VERTICES + 1, MAX_VERTICES + 2, MAX_VERTICES + 3}}, true);
 
     mRsp->geometry_mode = geometry_mode_saved;
     mRdp->viewport = viewport_saved;
@@ -3207,7 +3214,7 @@ bool gfx_tri1_otr_handler_f3dex2(F3DGfx** cmd0) {
     uint8_t v00 = (uint8_t)(cmd->words.w0 & 0x0000FFFF);
     uint8_t v01 = (uint8_t)(cmd->words.w1 >> 16);
     uint8_t v02 = (uint8_t)(cmd->words.w1 & 0x0000FFFF);
-    gfx->GfxSpTri1(v00, v01, v02, false);
+    gfx->GfxSpTri1({{v00, v01, v02}}, false);
 
     return false;
 }
@@ -3216,7 +3223,7 @@ bool gfx_tri1_handler_f3dex2(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri1(C0(16, 8) / 2, C0(8, 8) / 2, C0(0, 8) / 2, false);
+    gfx->GfxSpTri1({{C0(16, 8) / 2, C0(8, 8) / 2, C0(0, 8) / 2}}, false);
 
     return false;
 }
@@ -3225,7 +3232,7 @@ bool gfx_tri1_handler_f3dex(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri1(C1(17, 7), C1(9, 7), C1(1, 7), false);
+    gfx->GfxSpTri1({{C1(17, 7), C1(9, 7), C1(1, 7)}}, false);
 
     return false;
 }
@@ -3234,7 +3241,7 @@ bool gfx_tri1_handler_f3d(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri1(C1(16, 8) / 10, C1(8, 8) / 10, C1(0, 8) / 10, false);
+    gfx->GfxSpTri1({{C1(16, 8) / 10, C1(8, 8) / 10, C1(0, 8) / 10}}, false);
 
     return false;
 }
@@ -3244,8 +3251,7 @@ bool gfx_tri2_handler_f3dex(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri1(C0(17, 7), C0(9, 7), C0(1, 7), false);
-    gfx->GfxSpTri1(C1(17, 7), C1(9, 7), C1(1, 7), false);
+    gfx->GfxSpTri1({{C0(17, 7), C0(9, 7), C0(1, 7)}, {C1(17, 7), C1(9, 7), C1(1, 7)}}, false);
     return false;
 }
 
@@ -3253,8 +3259,7 @@ bool gfx_quad_handler_f3dex2(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri1(C0(16, 8) / 2, C0(8, 8) / 2, C0(0, 8) / 2, false);
-    gfx->GfxSpTri1(C1(16, 8) / 2, C1(8, 8) / 2, C1(0, 8) / 2, false);
+    gfx->GfxSpTri1({{C0(16, 8) / 2, C0(8, 8) / 2, C0(0, 8) / 2}, {C1(16, 8) / 2, C1(8, 8) / 2, C1(0, 8) / 2}}, false);
     return false;
 }
 
@@ -3262,8 +3267,7 @@ bool gfx_quad_handler_f3dex(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri1(C1(16, 8) / 2, C1(8, 8) / 2, C1(0, 8) / 2, false);
-    gfx->GfxSpTri1(C1(16, 8) / 2, C1(0, 8) / 2, C1(24, 8) / 2, false);
+    gfx->GfxSpTri1({{C1(16, 8) / 2, C1(8, 8) / 2, C1(0, 8) / 2}, {C1(16, 8) / 2, C1(0, 8) / 2, C1(24, 8) / 2}}, false);
     return false;
 }
 
