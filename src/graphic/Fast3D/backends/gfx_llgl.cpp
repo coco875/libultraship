@@ -24,6 +24,7 @@
 #include "graphic/Fast3D/Fast3dWindow.h"
 
 #include "utils/StringHelper.h"
+#include <consolevariablebridge.h>
 
 LLGL::RenderSystemPtr llgl_renderer;
 LLGL::SwapChain* llgl_swapChain;
@@ -704,21 +705,7 @@ static LLGL::SamplerAddressMode gfx_cm_to_llgl(uint32_t val) {
 }
 
 void Fast::GfxRenderingAPILLGL::SetSamplerParameters(int tile, bool linear_filter, uint32_t cms, uint32_t cmt) {
-    if (samplers.contains({ linear_filter, cms, cmt })) {
-        textures[current_texture_ids[tile]].second = samplers[{ linear_filter, cms, cmt }];
-        return;
-    }
-
-    LLGL::SamplerDescriptor samplerDesc;
-    samplerDesc.addressModeU = gfx_cm_to_llgl(cms);
-    samplerDesc.addressModeV = gfx_cm_to_llgl(cmt);
-    samplerDesc.addressModeW = LLGL::SamplerAddressMode::Clamp; // Not used in 2D textures
-    samplerDesc.minFilter = linear_filter ? LLGL::SamplerFilter::Linear : LLGL::SamplerFilter::Nearest;
-    samplerDesc.magFilter = linear_filter ? LLGL::SamplerFilter::Linear : LLGL::SamplerFilter::Nearest;
-
-    LLGL::Sampler* sampler = llgl_renderer->CreateSampler(samplerDesc);
-    samplers[{ linear_filter, cms, cmt }] = sampler;
-    textures[current_texture_ids[tile]].second = sampler;
+    textures[current_texture_ids[tile]].second = samplers[{ linear_filter, cms, cmt }];
 }
 
 void Fast::GfxRenderingAPILLGL::SetDepthTestAndMask(bool depth_test, bool z_upd) {
@@ -744,8 +731,7 @@ void Fast::GfxRenderingAPILLGL::SetViewport(int x, int y, int width, int height)
     // width = static_cast<int>(width * scale_x);
     // height = static_cast<int>(height * scale_y);
     int y_inverted = resolution.height - y - height;
-    int height_inverted = resolution.height - y_inverted;
-    llgl_cmdBuffer->SetViewport(LLGL::Viewport(x, y_inverted, width, height_inverted));
+    llgl_cmdBuffer->SetViewport(LLGL::Viewport(x, y_inverted, width, height));
 }
 
 void Fast::GfxRenderingAPILLGL::SetScissor(int x, int y, int width, int height) {
@@ -764,8 +750,7 @@ void Fast::GfxRenderingAPILLGL::SetScissor(int x, int y, int width, int height) 
     // width = static_cast<int>(width * scale_x);
     // height = static_cast<int>(height * scale_y);
     int y_inverted = resolution.height - y - height;
-    int height_inverted = resolution.height - y_inverted;
-    llgl_cmdBuffer->SetScissor(LLGL::Scissor(x, y_inverted, width, height_inverted));
+    llgl_cmdBuffer->SetScissor(LLGL::Scissor(x, y_inverted, width, height));
 }
 
 void Fast::GfxRenderingAPILLGL::SetUseAlpha(bool use_alpha) {
@@ -784,7 +769,8 @@ void Fast::GfxRenderingAPILLGL::DrawTriangles(float buf_vbo[], size_t buf_vbo_le
         vertexBufferSize = buf_vbo_len;
     }
     llgl_cmdBuffer->UpdateBuffer(*vertexBuffer, 0, buf_vbo, buf_vbo_len * sizeof(float));
-    llgl_cmdBuffer->SetVertexBuffer(*vertexBuffer, mCurrentShaderProgram->vertexFormat.attributes.size(), mCurrentShaderProgram->vertexFormat.attributes.data());
+    llgl_cmdBuffer->SetVertexBuffer(*vertexBuffer, mCurrentShaderProgram->vertexFormat.attributes.size(),
+                                    mCurrentShaderProgram->vertexFormat.attributes.data());
     llgl_cmdBuffer->SetPipelineState(
         *mCurrentShaderProgram->pipeline[disable_depth ? 0 : 1][disable_write_depth ? 0 : 1]);
 
@@ -839,6 +825,7 @@ void Fast::GfxRenderingAPILLGL::Init() {
     LLGL::SwapChainDescriptor swapChainDesc;
     swapChainDesc.resolution = { 800, 400 };
     swapChainDesc.resizable = true;
+    swapChainDesc.samples = CVarGetInteger(CVAR_MSAA_VALUE, 1);
     llgl_swapChain = llgl_renderer->CreateSwapChain(swapChainDesc, mWindowBackend->mInitData.LLGL.Window);
     llgl_swapChain->SetVsyncInterval(0);
 
@@ -858,21 +845,26 @@ void Fast::GfxRenderingAPILLGL::Init() {
     }
     noiseScaleBuffer = llgl_renderer->CreateBuffer(bufferDescNoiseScale, &noise_scale);
 
-    bool linear_filter = false;
-    int cms = G_TX_NOMIRROR | G_TX_WRAP;
-    int cmt = G_TX_NOMIRROR | G_TX_WRAP;
-
-    LLGL::SamplerDescriptor samplerDesc;
-    samplerDesc.addressModeU = gfx_cm_to_llgl(cms);
-    samplerDesc.addressModeV = gfx_cm_to_llgl(cmt);
-    samplerDesc.addressModeW = LLGL::SamplerAddressMode::Clamp; // Not used in 2D textures
-    samplerDesc.minFilter = linear_filter ? LLGL::SamplerFilter::Linear : LLGL::SamplerFilter::Nearest;
-    samplerDesc.magFilter = linear_filter ? LLGL::SamplerFilter::Linear : LLGL::SamplerFilter::Nearest;
-
-    LLGL::Sampler* sampler = llgl_renderer->CreateSampler(samplerDesc);
-    samplers[{ linear_filter, cms, cmt }] = sampler;
-    for (int tile = 0; tile < 6; tile++) {
-        current_texture_ids[tile] = 0;
+    for (int linear : { false, true }) {
+        for (int mirror_x : { G_TX_NOMIRROR, G_TX_MIRROR }) {
+            for (int wrap_clamp_x : { G_TX_WRAP, G_TX_CLAMP }) {
+                for (int mirror_y : { G_TX_NOMIRROR, G_TX_MIRROR }) {
+                    for (int wrap_clamp_y : { G_TX_WRAP, G_TX_CLAMP }) {
+                        int cms = wrap_clamp_x | mirror_x;
+                        int cmt = wrap_clamp_y | mirror_y;
+                        LLGL::SamplerDescriptor samplerDesc;
+                        {
+                            samplerDesc.addressModeU = gfx_cm_to_llgl(cms);
+                            samplerDesc.addressModeV = gfx_cm_to_llgl(cmt);
+                            samplerDesc.minFilter = linear ? LLGL::SamplerFilter::Linear : LLGL::SamplerFilter::Nearest;
+                            samplerDesc.magFilter = linear ? LLGL::SamplerFilter::Linear : LLGL::SamplerFilter::Nearest;
+                            samplerDesc.maxAnisotropy = CVarGetInteger(CVAR_ANISOTROPIC_FILTERING, 1);
+                        }
+                        samplers[{ linear, cms, cmt }] = llgl_renderer->CreateSampler(samplerDesc);
+                    }
+                }
+            }
+        }
     }
     LLGL::BufferDescriptor vboDesc;
     {
@@ -922,10 +914,8 @@ int Fast::GfxRenderingAPILLGL::CreateFramebuffer(void) {
 }
 
 void Fast::GfxRenderingAPILLGL::UpdateFramebufferParameters(int fb_id, uint32_t width, uint32_t height,
-                                                            uint32_t msaa_level, bool opengl_invert_y,
-                                                            bool render_target, bool has_depth_buffer,
-                                                            bool can_extract_depth) {
-    msaa_level = 1;
+                                                            bool opengl_invert_y, bool render_target,
+                                                            bool has_depth_buffer, bool can_extract_depth) {
     if (fb_id == 0) {
         llgl_swapChain->ResizeBuffers({ width, height });
         return;
@@ -948,7 +938,6 @@ void Fast::GfxRenderingAPILLGL::UpdateFramebufferParameters(int fb_id, uint32_t 
         texDesc.type = LLGL::TextureType::Texture2D;
         texDesc.format = LLGL::Format::RGBA8UNorm;
         texDesc.extent = { width, height, 1 };
-        texDesc.samples = msaa_level;
     }
 
     LLGL::Texture* texture = llgl_renderer->CreateTexture(texDesc);
@@ -960,7 +949,6 @@ void Fast::GfxRenderingAPILLGL::UpdateFramebufferParameters(int fb_id, uint32_t 
     LLGL::RenderTargetDescriptor renderTargetDesc;
     {
         renderTargetDesc.resolution = { width, height };
-        renderTargetDesc.samples = msaa_level;
         renderTargetDesc.colorAttachments[0] = texture;
         if (has_depth_buffer) {
             LLGL::TextureDescriptor depthTexDesc;
@@ -970,7 +958,6 @@ void Fast::GfxRenderingAPILLGL::UpdateFramebufferParameters(int fb_id, uint32_t 
                 depthTexDesc.extent.width = width;
                 depthTexDesc.extent.height = height;
                 depthTexDesc.mipLevels = 1;
-                depthTexDesc.samples = msaa_level;
                 depthTexDesc.type =
                     (depthTexDesc.samples > 1 ? LLGL::TextureType::Texture2DMS : LLGL::TextureType::Texture2D);
                 depthTexDesc.miscFlags = LLGL::MiscFlags::NoInitialData;
@@ -1035,13 +1022,19 @@ void Fast::GfxRenderingAPILLGL::ClearFramebuffer(bool color, bool depth) {
 
 void Fast::GfxRenderingAPILLGL::ReadFramebufferToCPU(int fb_id, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {
     LLGL::MutableImageView rgba16_view(LLGL::ImageFormat::RGBA, LLGL::DataType::UInt8, rgba16_buf, width * height * 4);
-    return;
-    if (fb_id == 0) {
-        llgl_cmdBuffer->CopyTextureFromFramebuffer(*textures[framebuffers[fb_id].second].first,
-                                                   LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), { 0, 0 });
+    LLGL::TextureDescriptor texDesc;
+    {
+        texDesc.type = LLGL::TextureType::Texture2D;
+        texDesc.bindFlags = LLGL::BindFlags::CopyDst;
+        texDesc.format = LLGL::Format::RGBA8UNorm;
+        texDesc.extent.width = width;
+        texDesc.extent.height = height;
     }
-    llgl_renderer->ReadTexture(*textures[framebuffers[fb_id].second].first,
-                               LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), rgba16_view);
+    LLGL::Texture* texture = llgl_renderer->CreateTexture(texDesc);
+    llgl_cmdBuffer->CopyTextureFromFramebuffer(*texture, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }),
+                                               { 0, 0 });
+    llgl_renderer->ReadTexture(*texture, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), rgba16_view);
+    // llgl_renderer->Release(*texture);
 }
 
 void Fast::GfxRenderingAPILLGL::ResolveMSAAColorBuffer(int fb_id_target, int fb_id_source) {
@@ -1099,4 +1092,26 @@ void Fast::GfxRenderingAPILLGL::SetSrgbMode(void) {
 ImTextureID Fast::GfxRenderingAPILLGL::GetTextureById(int id) {
     return nullptr; // TODO fix me
 }
+
+void Fast::GfxRenderingAPILLGL::SetMsaaLevel(uint32_t level) {
+    // TODO: change dynamically the msaa level
+};
+
+void Fast::GfxRenderingAPILLGL::SetAnisotropicFilteringLevel(uint32_t level) {
+    for (auto& sampler : samplers) {
+        llgl_renderer->Release(*sampler.second);
+        LLGL::SamplerDescriptor samplerDesc;
+        {
+            samplerDesc.addressModeU = gfx_cm_to_llgl(std::get<1>(sampler.first));
+            samplerDesc.addressModeV = gfx_cm_to_llgl(std::get<2>(sampler.first));
+            samplerDesc.minFilter =
+                std::get<0>(sampler.first) ? LLGL::SamplerFilter::Linear : LLGL::SamplerFilter::Nearest;
+            samplerDesc.magFilter =
+                std::get<0>(sampler.first) ? LLGL::SamplerFilter::Linear : LLGL::SamplerFilter::Nearest;
+            samplerDesc.maxAnisotropy = level;
+        }
+        sampler.second = llgl_renderer->CreateSampler(samplerDesc);
+    }
+};
+
 } // namespace Fast

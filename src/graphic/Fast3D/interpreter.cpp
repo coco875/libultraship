@@ -1804,8 +1804,7 @@ void Interpreter::AdjustVIewportOrScissor(XYWidthHeight* area) {
         area->x *= RATIO_X(mActiveFrameBuffer, mCurDimensions);
         area->y *= RATIO_Y(mActiveFrameBuffer, mCurDimensions);
 
-        if (!mRendersToFb || (mMsaaLevel > 1 && mCurDimensions.width == mGameWindowViewport.width &&
-                              mCurDimensions.height == mGameWindowViewport.height)) {
+        if (!mRendersToFb) {
             area->x += mGameWindowViewport.x;
             area->y += mGfxCurrentWindowDimensions.height - (mGameWindowViewport.y + mGameWindowViewport.height);
         }
@@ -4177,9 +4176,8 @@ void Interpreter::Init(class GfxWindowBackend* wapi, class GfxRenderingAPILLGL* 
     mWapi->Init(game_name, rapi->GetName(), start_in_fullscreen, width, height, posX, posY);
     mRapi->Init();
 
-    mRapi->UpdateFramebufferParameters(0, width, height, 1, false, true, true, true);
+    mRapi->UpdateFramebufferParameters(0, width, height, false, true, true, true);
     mCurDimensions.internal_mul = CVarGetFloat(CVAR_INTERNAL_RESOLUTION, 1);
-    mMsaaLevel = CVarGetInteger(CVAR_MSAA_VALUE, 1);
 
     mCurDimensions.width = width;
     mCurDimensions.height = height;
@@ -4260,7 +4258,7 @@ void Interpreter::StartFrame() {
                 AdjustWidthHeightForScale(width, height, fb.second.native_width, fb.second.native_height);
             }
             if (width != fb.second.applied_width || height != fb.second.applied_height) {
-                mRapi->UpdateFramebufferParameters(fb.first, width, height, 1, true, true, true, true);
+                mRapi->UpdateFramebufferParameters(fb.first, width, height, true, true, true, true);
                 fb.second.applied_width = width;
                 fb.second.applied_height = height;
             }
@@ -4269,20 +4267,16 @@ void Interpreter::StartFrame() {
 
     mPrvDimensions = mCurDimensions;
     mPrevNativeDimensions = mNativeDimensions;
-    if ((!ViewportMatchesRendererResolution() || mMsaaLevel > 1) && false) {
+    if (!ViewportMatchesRendererResolution()) {
         mRendersToFb = true;
         if (!ViewportMatchesRendererResolution()) {
-            mRapi->UpdateFramebufferParameters(mGameFb, mCurDimensions.width, mCurDimensions.height, mMsaaLevel, true,
+            mRapi->UpdateFramebufferParameters(mGameFb, mCurDimensions.width, mCurDimensions.height, true,
                                                true, true, true);
         } else {
             // MSAA framebuffer needs to be resolved to an equally sized target when complete, which must therefore
             // match the window size
             mRapi->UpdateFramebufferParameters(mGameFb, mGfxCurrentWindowDimensions.width,
-                                               mGfxCurrentWindowDimensions.height, mMsaaLevel, false, true, true, true);
-        }
-        if (mMsaaLevel > 1 && !ViewportMatchesRendererResolution()) {
-            mRapi->UpdateFramebufferParameters(mGameFbMsaaResolved, mCurDimensions.width, mCurDimensions.height, 1,
-                                               false, false, false, false);
+                                               mGfxCurrentWindowDimensions.height, false, true, true, true);
         }
     } else {
         mRendersToFb = false;
@@ -4302,7 +4296,7 @@ void Interpreter::Run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_r
 
     mCurMtxReplacements = &mtx_replacements;
 
-    mRapi->UpdateFramebufferParameters(0, mGfxCurrentWindowDimensions.width, mGfxCurrentWindowDimensions.height, 1,
+    mRapi->UpdateFramebufferParameters(0, mGfxCurrentWindowDimensions.width, mGfxCurrentWindowDimensions.height,
                                        false, true, true, !mRendersToFb);
     // mRapi->StartFrame();
     mRapi->StartDrawToFramebuffer(mRendersToFb ? mGameFb : 0, (float)mCurDimensions.height / mNativeDimensions.height);
@@ -4340,16 +4334,7 @@ void Interpreter::Run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_r
     if (mRendersToFb) {
         mRapi->StartDrawToFramebuffer(0, 1);
         mRapi->ClearFramebuffer(true, true);
-        if (mMsaaLevel > 1) {
-            if (!ViewportMatchesRendererResolution()) {
-                mRapi->ResolveMSAAColorBuffer(mGameFbMsaaResolved, mGameFb);
-                mGfxFrameBuffer = (uintptr_t)mRapi->GetFramebufferTextureId(mGameFbMsaaResolved);
-            } else {
-                mRapi->ResolveMSAAColorBuffer(0, mGameFb);
-            }
-        } else {
-            mGfxFrameBuffer = (uintptr_t)mRapi->GetFramebufferTextureId(mGameFb);
-        }
+        mGfxFrameBuffer = (uintptr_t)mRapi->GetFramebufferTextureId(mGameFb);
     } else if (mFbActive) {
         // Failsafe reset to main framebuffer to prevent softlocking the renderer
         mFbActive = 0;
@@ -4386,7 +4371,7 @@ int Interpreter::CreateFrameBuffer(uint32_t width, uint32_t height, uint32_t nat
     }
 
     int fb = mRapi->CreateFramebuffer();
-    mRapi->UpdateFramebufferParameters(fb, width, height, 1, true, true, true, true);
+    mRapi->UpdateFramebufferParameters(fb, width, height, true, true, true, true);
 
     mFrameBuffers[fb] = {
         orig_width, orig_height, width, height, native_width, native_height, static_cast<bool>(resize)
@@ -4415,8 +4400,7 @@ void Interpreter::CopyFrameBuffer(int fb_dst_id, int fb_src_id, bool copyOnce, b
 
     // When rendering to the main window buffer or MSAA is enabled with a buffer size equal to the view port,
     // then the source coordinates must account for any docked ImGui elements
-    if (fb_src_id == 0 || (mMsaaLevel > 1 && mCurDimensions.width == mGameWindowViewport.width &&
-                           mCurDimensions.height == mGameWindowViewport.height)) {
+    if (fb_src_id == 0) {
         srcX0 = mGameWindowViewport.x;
         srcY0 = mGameWindowViewport.y;
         srcX1 = mGameWindowViewport.x + mGameWindowViewport.width;
@@ -4449,8 +4433,7 @@ void Interpreter::AdjustPixelDepthCoordinates(float& x, float& y) {
     x = x * RATIO_X(mActiveFrameBuffer, mCurDimensions) -
         (mNativeDimensions.width * RATIO_X(mActiveFrameBuffer, mCurDimensions) - mCurDimensions.width) / 2;
     y *= RATIO_Y(mActiveFrameBuffer, mCurDimensions);
-    if (!mRendersToFb || (mMsaaLevel > 1 && mCurDimensions.width == mGameWindowViewport.width &&
-                          mCurDimensions.height == mGameWindowViewport.height)) {
+    if (!mRendersToFb) {
         x += mGameWindowViewport.x;
         y += mGfxCurrentWindowDimensions.height - (mGameWindowViewport.y + mGameWindowViewport.height);
     }
@@ -4535,7 +4518,11 @@ void Interpreter::SetResolutionMultiplier(float multiplier) {
 }
 
 void Interpreter::SetMsaaLevel(uint32_t level) {
-    mMsaaLevel = level;
+    mRapi->SetMsaaLevel(level);
+}
+
+void Interpreter::SetAnisotropicFilteringLevel(uint32_t level) {
+    mRapi->SetAnisotropicFilteringLevel(level);
 }
 
 void Interpreter::GetCurDimensions(uint32_t* width, uint32_t* height) {

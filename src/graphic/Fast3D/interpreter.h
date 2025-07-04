@@ -384,6 +384,7 @@ class Interpreter {
     void SetNativeDimensions(float width, float height);
     void SetResolutionMultiplier(float multiplier);
     void SetMsaaLevel(uint32_t level);
+    void SetAnisotropicFilteringLevel(uint32_t level);
     void GetCurDimensions(uint32_t* width, uint32_t* height);
 
     // private: TODO make these private
@@ -488,7 +489,6 @@ class Interpreter {
     XYWidthHeight mPrevNativeDimensions{}; // gfx_prev_native_dimensions;
     uintptr_t mGfxFrameBuffer{};
 
-    unsigned int mMsaaLevel = 1;
     bool mDroppedFrame{};
     std::vector<float> mBufVbo; // 3 vertices in a triangle and 32 floats per vtx
     size_t mBufVboNumTris{};

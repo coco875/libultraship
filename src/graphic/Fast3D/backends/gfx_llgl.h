@@ -65,7 +65,7 @@ class GfxRenderingAPILLGL {
     void EndFrame();
     void FinishRender();
     int CreateFramebuffer();
-    void UpdateFramebufferParameters(int fb_id, uint32_t width, uint32_t height, uint32_t msaa_level,
+    void UpdateFramebufferParameters(int fb_id, uint32_t width, uint32_t height,
                                      bool opengl_invertY, bool render_target, bool has_depth_buffer,
                                      bool can_extract_depth);
     void StartDrawToFramebuffer(int fbId, float noiseScale);
@@ -83,6 +83,8 @@ class GfxRenderingAPILLGL {
     FilteringMode GetTextureFilter();
     void SetSrgbMode();
     ImTextureID GetTextureById(int id);
+    void SetMsaaLevel(uint32_t level);
+    void SetAnisotropicFilteringLevel(uint32_t level);
 
   private:
     int current_tile;

@@ -55,6 +55,7 @@ class Window {
     virtual bool CanDisableVerticalSync() = 0;
     virtual void SetResolutionMultiplier(float multiplier) = 0;
     virtual void SetMsaaLevel(uint32_t value) = 0;
+    virtual void SetAnisotropicFilteringLevel(uint32_t value) = 0;
     virtual void SetFullscreen(bool isFullscreen) = 0;
     virtual bool IsFullscreen() = 0;
     virtual bool IsRunning() = 0;

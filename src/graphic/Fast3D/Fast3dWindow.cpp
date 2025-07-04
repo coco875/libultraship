@@ -282,6 +282,10 @@ void Fast3dWindow::SetMsaaLevel(uint32_t value) {
     mInterpreter->SetMsaaLevel(value);
 }
 
+void Fast3dWindow::SetAnisotropicFilteringLevel(uint32_t value) {
+    mInterpreter->SetAnisotropicFilteringLevel(value);
+}
+
 void Fast3dWindow::SetFullscreen(bool isFullscreen) {
     // Save current window position before fullscreening
     SaveWindowToConfig();
