@@ -996,22 +996,49 @@ void Fast::GfxRenderingAPILLGL::StartDrawToFramebuffer(int fb_id, float noise_sc
 
 void Fast::GfxRenderingAPILLGL::CopyFramebuffer(int fb_dst_id, int fb_src_id, int srcX0, int srcY0, int srcX1,
                                                 int srcY1, int dstX0, int dstY0, int dstX1, int dstY1) {
+    // Validate framebuffer IDs
     if (fb_dst_id < 0 || fb_dst_id >= (int)framebuffers.size() || framebuffers[fb_dst_id].first == nullptr ||
         fb_src_id < 0 || fb_src_id >= (int)framebuffers.size() || framebuffers[fb_src_id].first == nullptr) {
         SPDLOG_ERROR("Invalid framebuffer ID: {} or {}", fb_dst_id, fb_src_id);
         return;
     }
-    // probably wrong
-    const LLGL::TextureLocation location({ dstX0, dstY0, 0 });
+
+    // Validate that textures exist
+    if (textures[framebuffers[fb_dst_id].second].first == nullptr ||
+        textures[framebuffers[fb_src_id].second].first == nullptr) {
+        SPDLOG_ERROR("Invalid texture for framebuffer copy: dst={}, src={}", fb_dst_id, fb_src_id);
+        return;
+    }
+
+    // Calculate dimensions (ensure positive values)
+    uint32_t srcWidth = static_cast<uint32_t>(std::abs(srcX1 - srcX0));
+    uint32_t srcHeight = static_cast<uint32_t>(std::abs(srcY1 - srcY0));
+    uint32_t dstWidth = static_cast<uint32_t>(std::abs(dstX1 - dstX0));
+    uint32_t dstHeight = static_cast<uint32_t>(std::abs(dstY1 - dstY0));
+
+    // Use the minimum dimensions to avoid copying outside bounds
+    uint32_t copyWidth = std::min(srcWidth, dstWidth);
+    uint32_t copyHeight = std::min(srcHeight, dstHeight);
+
+    if (copyWidth == 0 || copyHeight == 0) {
+        SPDLOG_WARN("Zero-sized copy region in CopyFramebuffer");
+        return;
+    }
+
     if (fb_src_id == current_framebuffer_id) {
+        // Copy from current framebuffer to texture
         const LLGL::TextureRegion dstRegion(
-            { 0, 0, 0 }, { static_cast<uint32_t>(dstX1 - dstX0), static_cast<uint32_t>(dstY1 - dstY0), 0 });
+            { static_cast<uint32_t>(dstX0), static_cast<uint32_t>(dstY0), 0 }, 
+            { copyWidth, copyHeight, 1 });
         llgl_cmdBuffer->CopyTextureFromFramebuffer(*textures[framebuffers[fb_dst_id].second].first, dstRegion,
-                                                   { 0, 0 });
+                                                   { static_cast<uint32_t>(srcX0), static_cast<uint32_t>(srcY0) });
     } else {
-        llgl_cmdBuffer->CopyTexture(*textures[framebuffers[fb_dst_id].second].first, location,
-                                    *textures[framebuffers[fb_src_id].second].first, location,
-                                    { (uint32_t)(dstX1 - dstX0), (uint32_t)(dstY1 - dstY0), 0 });
+        // Copy between textures
+        const LLGL::TextureLocation dstLocation({ static_cast<uint32_t>(dstX0), static_cast<uint32_t>(dstY0), 0 });
+        const LLGL::TextureLocation srcLocation({ static_cast<uint32_t>(srcX0), static_cast<uint32_t>(srcY0), 0 });
+        llgl_cmdBuffer->CopyTexture(*textures[framebuffers[fb_dst_id].second].first, dstLocation,
+                                    *textures[framebuffers[fb_src_id].second].first, srcLocation,
+                                    { copyWidth, copyHeight, 1 });
     }
 }
 
@@ -1020,21 +1047,49 @@ void Fast::GfxRenderingAPILLGL::ClearFramebuffer(bool color, bool depth) {
     llgl_cmdBuffer->Clear(flags, LLGL::ClearValue{ 0.0f, 0.0f, 0.0f, 1.0f });
 }
 
-void Fast::GfxRenderingAPILLGL::ReadFramebufferToCPU(int fb_id, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {
-    LLGL::MutableImageView rgba16_view(LLGL::ImageFormat::RGBA, LLGL::DataType::UInt8, rgba16_buf, width * height * 4);
-    LLGL::TextureDescriptor texDesc;
-    {
-        texDesc.type = LLGL::TextureType::Texture2D;
-        texDesc.bindFlags = LLGL::BindFlags::CopyDst;
-        texDesc.format = LLGL::Format::RGBA8UNorm;
-        texDesc.extent.width = width;
-        texDesc.extent.height = height;
+#define SCALE_8_5(VAL_) ((((VAL_) + 4) * 0x1F) / 0xFF)
+
+void convert_rgba32_to_rgba16(const uint8_t* rgba32_buf, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {
+    for (uint32_t i = 0; i < width * height; ++i) {
+        uint8_t r = rgba32_buf[i * 4 + 0];
+        uint8_t g = rgba32_buf[i * 4 + 1];
+        uint8_t b = rgba32_buf[i * 4 + 2];
+        uint8_t a = rgba32_buf[i * 4 + 3];
+        uint16_t color = (SCALE_8_5(r) << 11) | (SCALE_8_5(g) << 6) | (SCALE_8_5(b) << 1) | (a > 0 ? 1 : 0);
+        rgba16_buf[i] = color;
     }
-    LLGL::Texture* texture = llgl_renderer->CreateTexture(texDesc);
-    llgl_cmdBuffer->CopyTextureFromFramebuffer(*texture, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }),
-                                               { 0, 0 });
-    llgl_renderer->ReadTexture(*texture, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), rgba16_view);
-    // llgl_renderer->Release(*texture);
+}
+
+void Fast::GfxRenderingAPILLGL::ReadFramebufferToCPU(int fb_id, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {
+    void* data = malloc(width * height * 4);
+    LLGL::MutableImageView rgba32_view(LLGL::ImageFormat::RGBA, LLGL::DataType::UInt8, data, width * height * 4);
+    if (fb_id == current_framebuffer_id) {
+        LLGL::TextureDescriptor texDesc;
+        {
+            texDesc.type = LLGL::TextureType::Texture2D;
+            texDesc.bindFlags = LLGL::BindFlags::CopyDst;
+            texDesc.format = LLGL::Format::RGBA8UNorm;
+            texDesc.extent.width = width;
+            texDesc.extent.height = height;
+            texDesc.mipLevels = 1;
+            texDesc.miscFlags = LLGL::MiscFlags::NoInitialData;
+        }
+        LLGL::Texture* texture = llgl_renderer->CreateTexture(texDesc);
+        llgl_cmdBuffer->CopyTextureFromFramebuffer(*texture, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }),
+                                                   { 0, 0 });
+        llgl_renderer->ReadTexture(*texture, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), rgba32_view);
+        convert_rgba32_to_rgba16((const uint8_t*)data, width, height, rgba16_buf);
+        free(data);
+        llgl_renderer->Release(*texture);
+    } else if (fb_id >= 0 && fb_id < (int)framebuffers.size() && framebuffers[fb_id].first != nullptr) {
+        llgl_renderer->ReadTexture(*textures[framebuffers[fb_id].second].first,
+                                   LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), rgba32_view);
+        convert_rgba32_to_rgba16((const uint8_t*)data, width, height, rgba16_buf);
+        free(data);
+    } else {
+        SPDLOG_ERROR("Invalid framebuffer ID: {}", fb_id);
+        free(data);
+    }
 }
 
 void Fast::GfxRenderingAPILLGL::ResolveMSAAColorBuffer(int fb_id_target, int fb_id_source) {

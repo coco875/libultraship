@@ -74,7 +74,7 @@ vec4 filter3point(in texture2D tex, in sampler sampl, in vec2 texCoord, in vec2 
 vec4 hookTexture2D(in int id, in texture2D tex, in sampler sampl, in vec2 uv, in vec2 texSize) {
 @if(o_three_point_filtering)
     // if(texture_filtering[id] == @{FILTER_THREE_POINT}) {
-        return filter3point(tex, uv, texSize);
+        return filter3point(tex, sampl, uv, texSize);
     // }
 @end
     return texture(sampler2D(tex, sampl), uv);
