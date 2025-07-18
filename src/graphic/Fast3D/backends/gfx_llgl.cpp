@@ -717,7 +717,7 @@ void Fast::GfxRenderingAPILLGL::SetZmodeDecal(bool zmode_decal) {
 }
 
 void Fast::GfxRenderingAPILLGL::SetViewport(int x, int y, int width, int height) {
-    auto resolution = llgl_swapChain->GetResolution();
+    auto resolution = framebuffers[current_framebuffer_id].first->GetResolution();
     float scale_x = 1.0f;
     float scale_y = 1.0f;
     int render_width, render_height;
@@ -735,7 +735,7 @@ void Fast::GfxRenderingAPILLGL::SetViewport(int x, int y, int width, int height)
 }
 
 void Fast::GfxRenderingAPILLGL::SetScissor(int x, int y, int width, int height) {
-    auto resolution = llgl_swapChain->GetResolution();
+    auto resolution = framebuffers[current_framebuffer_id].first->GetResolution();
 
     float scale_x = 1.0f;
     float scale_y = 1.0f;
@@ -991,7 +991,6 @@ void Fast::GfxRenderingAPILLGL::StartDrawToFramebuffer(int fb_id, float noise_sc
         // Set the noise scale for the shader
         llgl_cmdBuffer->BeginRenderPass(*framebuffers[fb_id].first);
     }
-    // llgl_cmdBuffer->SetViewport(framebuffers[fb_id].first->GetResolution());
 }
 
 void Fast::GfxRenderingAPILLGL::CopyFramebuffer(int fb_dst_id, int fb_src_id, int srcX0, int srcY0, int srcX1,
@@ -1025,11 +1024,11 @@ void Fast::GfxRenderingAPILLGL::CopyFramebuffer(int fb_dst_id, int fb_src_id, in
         return;
     }
 
-    if (fb_src_id == current_framebuffer_id) {
+    if (fb_src_id == 0) {
         // Copy from current framebuffer to texture
         const LLGL::TextureRegion dstRegion(
             { static_cast<uint32_t>(dstX0), static_cast<uint32_t>(dstY0), 0 }, 
-            { copyWidth, copyHeight, 1 });
+            { srcWidth, srcHeight, 1 });
         llgl_cmdBuffer->CopyTextureFromFramebuffer(*textures[framebuffers[fb_dst_id].second].first, dstRegion,
                                                    { static_cast<uint32_t>(srcX0), static_cast<uint32_t>(srcY0) });
     } else {
@@ -1063,24 +1062,12 @@ void convert_rgba32_to_rgba16(const uint8_t* rgba32_buf, uint32_t width, uint32_
 void Fast::GfxRenderingAPILLGL::ReadFramebufferToCPU(int fb_id, uint32_t width, uint32_t height, uint16_t* rgba16_buf) {
     void* data = malloc(width * height * 4);
     LLGL::MutableImageView rgba32_view(LLGL::ImageFormat::RGBA, LLGL::DataType::UInt8, data, width * height * 4);
-    if (fb_id == current_framebuffer_id) {
-        LLGL::TextureDescriptor texDesc;
-        {
-            texDesc.type = LLGL::TextureType::Texture2D;
-            texDesc.bindFlags = LLGL::BindFlags::CopyDst;
-            texDesc.format = LLGL::Format::RGBA8UNorm;
-            texDesc.extent.width = width;
-            texDesc.extent.height = height;
-            texDesc.mipLevels = 1;
-            texDesc.miscFlags = LLGL::MiscFlags::NoInitialData;
-        }
-        LLGL::Texture* texture = llgl_renderer->CreateTexture(texDesc);
-        llgl_cmdBuffer->CopyTextureFromFramebuffer(*texture, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }),
+    if (fb_id == 0) {
+        llgl_cmdBuffer->CopyTextureFromFramebuffer(*textures[framebuffers[fb_id].second].first, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }),
                                                    { 0, 0 });
-        llgl_renderer->ReadTexture(*texture, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), rgba32_view);
+        llgl_renderer->ReadTexture(*textures[framebuffers[fb_id].second].first, LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), rgba32_view);
         convert_rgba32_to_rgba16((const uint8_t*)data, width, height, rgba16_buf);
         free(data);
-        llgl_renderer->Release(*texture);
     } else if (fb_id >= 0 && fb_id < (int)framebuffers.size() && framebuffers[fb_id].first != nullptr) {
         llgl_renderer->ReadTexture(*textures[framebuffers[fb_id].second].first,
                                    LLGL::TextureRegion({ 0, 0, 0 }, { width, height, 1 }), rgba32_view);
