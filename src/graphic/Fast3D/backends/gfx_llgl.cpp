@@ -1141,6 +1141,7 @@ void Fast::GfxRenderingAPILLGL::SetMsaaLevel(uint32_t level) {
 
 void Fast::GfxRenderingAPILLGL::SetAnisotropicFilteringLevel(uint32_t level) {
     for (auto& sampler : samplers) {
+        auto old_ptr = sampler.second;
         llgl_renderer->Release(*sampler.second);
         LLGL::SamplerDescriptor samplerDesc;
         {
@@ -1153,6 +1154,12 @@ void Fast::GfxRenderingAPILLGL::SetAnisotropicFilteringLevel(uint32_t level) {
             samplerDesc.maxAnisotropy = level;
         }
         sampler.second = llgl_renderer->CreateSampler(samplerDesc);
+
+        for (auto& texture : textures) {
+            if (texture.second == old_ptr) {
+                texture.second = sampler.second; // Update the sampler for the texture
+            }
+        }
     }
 };
 

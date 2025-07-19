@@ -14,7 +14,7 @@ LLGL::OpenGL::RenderSystemNativeHandle handle;
 SDLSurface::SDLSurface(const LLGL::Extent2D& size, const char* title, int rendererID,
                        LLGL::RenderSystemDescriptor& desc)
     : title_{ title }, size_{ size } {
-    Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+    Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE; // | SDL_WINDOW_ALLOW_HIGHDPI;
     switch (rendererID) {
         case LLGL::RendererID::OpenGL:
             flags |= SDL_WINDOW_OPENGL;
