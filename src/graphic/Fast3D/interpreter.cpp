@@ -1170,7 +1170,7 @@ void Interpreter::GfxSpVertex(size_t n_vertices, size_t dest_index, const F3DVtx
 
         float world_pos[3] = { 0.0 };
         if (mRsp->geometry_mode & G_LIGHTING_POSITIONAL) {
-            float (*mtx)[4] = mRsp->modelview_matrix_stack[mRsp->modelview_matrix_stack_size - 1];
+            float(*mtx)[4] = mRsp->modelview_matrix_stack[mRsp->modelview_matrix_stack_size - 1];
             world_pos[0] = v->ob[0] * mtx[0][0] + v->ob[1] * mtx[1][0] + v->ob[2] * mtx[2][0] + mtx[3][0];
             world_pos[1] = v->ob[0] * mtx[0][1] + v->ob[1] * mtx[1][1] + v->ob[2] * mtx[2][1] + mtx[3][1];
             world_pos[2] = v->ob[0] * mtx[0][2] + v->ob[1] * mtx[1][2] + v->ob[2] * mtx[2][2] + mtx[3][2];
@@ -1728,7 +1728,7 @@ void Interpreter::GfxSpTri(std::vector<std::tuple<int, int, int>> vertex_array, 
                     case G_CCMUX_LOD_FRACTION: {
                         if (mRdp->other_mode_l & G_TL_LOD) {
                             // "Hack" that works for Bowser - Peach painting
-                            float distance_frac = (vec_vtx[(i/3)*3]->w - 3000.0f) / 3000.0f;
+                            float distance_frac = (vec_vtx[(i / 3) * 3]->w - 3000.0f) / 3000.0f;
                             if (distance_frac < 0.0f) {
                                 distance_frac = 0.0f;
                             }
@@ -2306,7 +2306,9 @@ void Interpreter::GfxDrawRectangle(int32_t ulx, int32_t uly, int32_t lrx, int32_
     mRdp->viewport_or_scissor_changed = true;
     mRsp->geometry_mode = 0;
 
-    GfxSpTri({{MAX_VERTICES + 0, MAX_VERTICES + 1, MAX_VERTICES + 3}, {MAX_VERTICES + 1, MAX_VERTICES + 2, MAX_VERTICES + 3}}, true);
+    GfxSpTri({ { MAX_VERTICES + 0, MAX_VERTICES + 1, MAX_VERTICES + 3 },
+               { MAX_VERTICES + 1, MAX_VERTICES + 2, MAX_VERTICES + 3 } },
+             true);
 
     mRsp->geometry_mode = geometry_mode_saved;
     mRdp->viewport = viewport_saved;
@@ -3213,7 +3215,7 @@ bool gfx_tri1_otr_handler_f3dex2(F3DGfx** cmd0) {
     uint8_t v00 = (uint8_t)(cmd->words.w0 & 0x0000FFFF);
     uint8_t v01 = (uint8_t)(cmd->words.w1 >> 16);
     uint8_t v02 = (uint8_t)(cmd->words.w1 & 0x0000FFFF);
-    gfx->GfxSpTri({{v00, v01, v02}}, false);
+    gfx->accumulated_triangles.push_back({ v00, v01, v02 });
 
     return false;
 }
@@ -3222,7 +3224,7 @@ bool gfx_tri1_handler_f3dex2(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri({{C0(16, 8) / 2, C0(8, 8) / 2, C0(0, 8) / 2}}, false);
+    gfx->accumulated_triangles.push_back({ C0(16, 8) / 2, C0(8, 8) / 2, C0(0, 8) / 2 });
 
     return false;
 }
@@ -3231,7 +3233,7 @@ bool gfx_tri1_handler_f3dex(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri({{C1(17, 7), C1(9, 7), C1(1, 7)}}, false);
+    gfx->accumulated_triangles.push_back({ C1(17, 7), C1(9, 7), C1(1, 7) });
 
     return false;
 }
@@ -3240,7 +3242,7 @@ bool gfx_tri1_handler_f3d(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri({{C1(16, 8) / 10, C1(8, 8) / 10, C1(0, 8) / 10}}, false);
+    gfx->accumulated_triangles.push_back({ C1(16, 8) / 10, C1(8, 8) / 10, C1(0, 8) / 10 });
 
     return false;
 }
@@ -3250,7 +3252,8 @@ bool gfx_tri2_handler_f3dex(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri({{C0(17, 7), C0(9, 7), C0(1, 7)}, {C1(17, 7), C1(9, 7), C1(1, 7)}}, false);
+    gfx->accumulated_triangles.push_back({ C0(17, 7), C0(9, 7), C0(1, 7) });
+    gfx->accumulated_triangles.push_back({ C1(17, 7), C1(9, 7), C1(1, 7) });
     return false;
 }
 
@@ -3258,7 +3261,8 @@ bool gfx_quad_handler_f3dex2(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri({{C0(16, 8) / 2, C0(8, 8) / 2, C0(0, 8) / 2}, {C1(16, 8) / 2, C1(8, 8) / 2, C1(0, 8) / 2}}, false);
+    gfx->accumulated_triangles.push_back({ C0(16, 8) / 2, C0(8, 8) / 2, C0(0, 8) / 2 });
+    gfx->accumulated_triangles.push_back({ C1(16, 8) / 2, C1(8, 8) / 2, C1(0, 8) / 2 });
     return false;
 }
 
@@ -3266,7 +3270,8 @@ bool gfx_quad_handler_f3dex(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance.lock().get();
     F3DGfx* cmd = *cmd0;
 
-    gfx->GfxSpTri({{C1(16, 8) / 2, C1(8, 8) / 2, C1(0, 8) / 2}, {C1(16, 8) / 2, C1(0, 8) / 2, C1(24, 8) / 2}}, false);
+    gfx->accumulated_triangles.push_back({ C1(16, 8) / 2, C1(8, 8) / 2, C1(0, 8) / 2 });
+    gfx->accumulated_triangles.push_back({ C1(16, 8) / 2, C1(0, 8) / 2, C1(24, 8) / 2 });
     return false;
 }
 
@@ -4120,6 +4125,32 @@ static void gfx_step() {
     }
 #endif
 
+    if (ucode_handler_index == ucode_f3dex2) {
+        Interpreter* gfx = mInstance.lock().get();
+        if (opcode == F3DEX2_G_TRI1 || opcode == F3DEX2_G_TRI2 || opcode == F3DEX2_G_QUAD || opcode == OTR_G_TRI1_OTR) {
+            gfx->accumulate_triangle = true;
+        }
+
+        if (gfx->accumulate_triangle && opcode != F3DEX2_G_TRI1 && opcode != F3DEX2_G_TRI2 && opcode != F3DEX2_G_QUAD &&
+            opcode != OTR_G_TRI1_OTR) {
+                gfx->GfxSpTri(gfx->accumulated_triangles, false);
+            gfx->accumulate_triangle = false;
+            gfx->accumulated_triangles.clear();
+        }
+    } else {
+        Interpreter* gfx = mInstance.lock().get();
+        if (opcode == F3DEX_G_TRI1 || opcode == F3DEX_G_TRI2 || opcode == F3DEX_G_QUAD || opcode == OTR_G_TRI1_OTR) {
+            gfx->accumulate_triangle = true;
+        }
+
+        if (gfx->accumulate_triangle && opcode != F3DEX_G_TRI1 && opcode != F3DEX_G_TRI2 && opcode != F3DEX_G_QUAD &&
+            opcode != OTR_G_TRI1_OTR) {
+            gfx->GfxSpTri(gfx->accumulated_triangles, false);
+            gfx->accumulate_triangle = false;
+            gfx->accumulated_triangles.clear();
+        }
+    }
+
     if (opcode == F3DEX2_G_LOAD_UCODE) {
         gfx_set_ucode_handler((UcodeHandlers)(cmd->words.w0 & 0xFFFFFF));
         ++cmd;
@@ -4226,16 +4257,16 @@ bool Interpreter::IsFrameReady() {
 }
 
 bool Interpreter::ViewportMatchesRendererResolution() {
-// #ifdef __APPLE__
+    // #ifdef __APPLE__
     // Always treat the viewport as not matching the render resolution on mac
     // to avoid issues with retina scaling.
-//     return false;
-// #else
+    //     return false;
+    // #else
     if (mCurDimensions.width == mGameWindowViewport.width && mCurDimensions.height == mGameWindowViewport.height) {
         return true;
     }
     return false;
-// #endif
+    // #endif
 }
 
 void Interpreter::StartFrame() {
@@ -4269,8 +4300,8 @@ void Interpreter::StartFrame() {
     mPrevNativeDimensions = mNativeDimensions;
     if (!ViewportMatchesRendererResolution()) {
         mRendersToFb = true;
-        mRapi->UpdateFramebufferParameters(mGameFb, mCurDimensions.width, mCurDimensions.height, true,
-                                               true, true, true);
+        mRapi->UpdateFramebufferParameters(mGameFb, mCurDimensions.width, mCurDimensions.height, true, true, true,
+                                           true);
     } else {
         mRendersToFb = false;
     }
@@ -4289,8 +4320,8 @@ void Interpreter::Run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_r
 
     mCurMtxReplacements = &mtx_replacements;
 
-    mRapi->UpdateFramebufferParameters(0, mGfxCurrentWindowDimensions.width, mGfxCurrentWindowDimensions.height,
-                                       false, true, true, !mRendersToFb);
+    mRapi->UpdateFramebufferParameters(0, mGfxCurrentWindowDimensions.width, mGfxCurrentWindowDimensions.height, false,
+                                       true, true, !mRendersToFb);
     // mRapi->StartFrame();
     mRapi->StartDrawToFramebuffer(mRendersToFb ? mGameFb : 0, (float)mCurDimensions.height / mNativeDimensions.height);
     mRapi->ClearFramebuffer(false, true);

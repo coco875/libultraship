@@ -514,6 +514,9 @@ class Interpreter {
     std::vector<std::string> shader_ids;
     int mInterpolationIndex;
     int mInterpolationIndexTarget;
+
+    bool accumulate_triangle = false;
+    std::vector<std::tuple<int, int, int>> accumulated_triangles;
 };
 
 void gfx_set_target_ucode(UcodeHandlers ucode);
