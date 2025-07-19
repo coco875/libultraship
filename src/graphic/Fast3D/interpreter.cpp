@@ -4226,16 +4226,16 @@ bool Interpreter::IsFrameReady() {
 }
 
 bool Interpreter::ViewportMatchesRendererResolution() {
-#ifdef __APPLE__
+// #ifdef __APPLE__
     // Always treat the viewport as not matching the render resolution on mac
     // to avoid issues with retina scaling.
-    return false;
-#else
+//     return false;
+// #else
     if (mCurDimensions.width == mGameWindowViewport.width && mCurDimensions.height == mGameWindowViewport.height) {
         return true;
     }
     return false;
-#endif
+// #endif
 }
 
 void Interpreter::StartFrame() {
@@ -4269,15 +4269,8 @@ void Interpreter::StartFrame() {
     mPrevNativeDimensions = mNativeDimensions;
     if (!ViewportMatchesRendererResolution()) {
         mRendersToFb = true;
-        if (!ViewportMatchesRendererResolution()) {
-            mRapi->UpdateFramebufferParameters(mGameFb, mCurDimensions.width, mCurDimensions.height, true,
+        mRapi->UpdateFramebufferParameters(mGameFb, mCurDimensions.width, mCurDimensions.height, true,
                                                true, true, true);
-        } else {
-            // MSAA framebuffer needs to be resolved to an equally sized target when complete, which must therefore
-            // match the window size
-            mRapi->UpdateFramebufferParameters(mGameFb, mGfxCurrentWindowDimensions.width,
-                                               mGfxCurrentWindowDimensions.height, false, true, true, true);
-        }
     } else {
         mRendersToFb = false;
     }
