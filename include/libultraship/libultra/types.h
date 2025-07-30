@@ -1,5 +1,4 @@
-#ifndef ULTRA64_TYPES_H
-#define ULTRA64_TYPES_H
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -58,6 +57,4 @@ typedef union {
 typedef MtxS Mtx;
 #else
 typedef MtxF Mtx;
-#endif
-
 #endif

@@ -1,6 +1,5 @@
 #ifdef ENABLE_OPENGL
-#ifndef GFX_OPENGL_H
-#define GFX_OPENGL_H
+#pragma once
 
 #include "gfx_rendering_api.h"
 #include "../interpreter.h"
@@ -107,7 +106,7 @@ class GfxRenderingAPIOGL final : public GfxRenderingAPI {
         uint16_t filtering;
     } textures[1024];
 
-    GLuint mCurrentTextureIds[2];
+    GLuint mCurrentTextureIds[SHADER_MAX_TEXTURES];
     uint8_t mCurrentTile;
 
     std::map<std::pair<uint64_t, uint32_t>, ShaderProgram> mShaderProgramPool;
@@ -132,5 +131,4 @@ class GfxRenderingAPIOGL final : public GfxRenderingAPI {
 };
 
 } // namespace Fast
-#endif
 #endif
