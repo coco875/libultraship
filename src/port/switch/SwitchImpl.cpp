@@ -16,7 +16,10 @@
 static AppletHookCookie applet_hook_cookie;
 static bool isRunning = true;
 static bool hasFocus = true;
-static bool isShowingVirtualKeyboard = true;
+static bool isShowingVirtualKeyboard = false;
+
+static SwkbdConfig keyboard;
+static char kbBuffer[256] = { 0 };
 
 void DetectAppletMode();
 
@@ -24,15 +27,18 @@ static void on_applet_hook(AppletHookType hook, void* param);
 
 void Ship::Switch::Init(SwitchPhase phase) {
     switch (phase) {
-        case PreInitPhase:
+        case PreInitPhase: {
+            Result rc = socketInitializeDefault();
+// #ifdef DEBUG
+            if (R_SUCCEEDED(rc)){
+                nxlinkStdio();
+            }
+// #endif
             DetectAppletMode();
             break;
+        }
         case PostInitPhase:
             appletInitializeGamePlayRecording();
-#ifdef DEBUG
-            socketInitializeDefault();
-            nxlinkStdio();
-#endif
             appletSetGamePlayRecordingState(true);
             appletHook(&applet_hook_cookie, on_applet_hook, NULL);
             if (!hosversionBefore(8, 0, 0)) {
@@ -78,21 +84,29 @@ void Ship::Switch::ImGuiSetupFont(ImFontAtlas* fonts) {
     plExit();
 }
 
+void Ship::Switch::CreateKeyboard() {
+    Result rc = swkbdCreate(&keyboard, 0);
+    if (R_FAILED(rc)) {
+        SPDLOG_ERROR("Failed to create keyboard: {}", rc);
+    } else {
+        swkbdConfigMakePresetDefault(&keyboard);
+    }
+}
+
 void Ship::Switch::ImGuiProcessEvent(bool wantsTextInput) {
     ImGuiInputTextState* state = ImGui::GetInputTextState(ImGui::GetActiveID());
-
+    ImGuiIO& io = ImGui::GetIO();
     if (wantsTextInput) {
         if (!isShowingVirtualKeyboard) {
             state->ClearText();
-
             isShowingVirtualKeyboard = true;
-            SDL_StartTextInput();
+            memset(kbBuffer, 0, sizeof(kbBuffer));
+            swkbdShow(&keyboard, kbBuffer, sizeof(kbBuffer));
+            io.SetAppAcceptingEvents(true);
+            io.AddInputCharactersUTF8(kbBuffer);
         }
-    } else {
-        if (isShowingVirtualKeyboard) {
-            isShowingVirtualKeyboard = false;
-            SDL_StopTextInput();
-        }
+    } else if (isShowingVirtualKeyboard) {
+        isShowingVirtualKeyboard = false;
     }
 }
 

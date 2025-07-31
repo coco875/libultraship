@@ -20,6 +20,8 @@ class Switch {
     static void Exit();
     static void ImGuiSetupFont(ImFontAtlas* fonts);
     static void ImGuiProcessEvent(bool wantsTextInput);
+    static void CreateKeyboard();
+    static void ShowKeyboard();
     static bool IsRunning();
     static void GetDisplaySize(int* width, int* height);
     static void ApplyOverclock();

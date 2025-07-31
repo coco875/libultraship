@@ -132,6 +132,7 @@ void Gui::Init(GuiWindowInitData windowImpl) {
     mImGuiIo->Fonts->AddFontFromMemoryCompressedBase85TTF(fontawesome_compressed_data_base85, iconFontSize,
                                                           &iconsConfig, sIconsRanges);
 #ifdef __SWITCH__
+    Ship::Switch::CreateKeyboard();
     Ship::Switch::ImGuiSetupFont(mImGuiIo->Fonts);
 #endif
 
