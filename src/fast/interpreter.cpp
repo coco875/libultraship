@@ -788,6 +788,11 @@ void Interpreter::ImportTextureI4(int tile, bool importReplacement) {
     uint32_t width = widthBytes * 2;
     uint32_t height = widthBytes > 0 ? sizeBytes / widthBytes : 0;
 
+    if (width == 0 && height == 0) {
+        SPDLOG_ERROR("Texture of width and height of 0");
+        return;
+    }
+
     // A single line of pixels should not equal the entire image (height == 1 non-withstanding)
     if (fullImageLineSizeBytes == sizeBytes) {
         fullImageLineSizeBytes = width / 2;
