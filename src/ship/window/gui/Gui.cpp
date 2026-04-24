@@ -35,7 +35,7 @@
 #endif
 
 #if defined(__ANDROID__) || defined(__IOS__)
-#include "port/mobile/MobileImpl.h"
+#include "ship/port/mobile/MobileImpl.h"
 #endif
 
 #ifdef ENABLE_OPENGL
@@ -56,8 +56,6 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARA
 namespace Ship {
 #define TOGGLE_BTN ImGuiKey_F1
 #define TOGGLE_PAD_BTN ImGuiKey_GamepadBack
-
-static Ship::Coords mPrevMousePos;
 
 Gui::Gui(std::vector<std::shared_ptr<GuiWindow>> guiWindows) : mNeedsConsoleVariableSave(false) {
     mGameOverlay = std::make_shared<GameOverlay>();
@@ -96,18 +94,6 @@ Gui::Gui() : Gui(std::vector<std::shared_ptr<GuiWindow>>()) {
 
 Gui::~Gui() {
     SPDLOG_TRACE("destruct gui");
-    if (mImGuiIo != nullptr) {
-        //! @todo Refactor required to prevent memory leak. Also,
-        // the delete statements result in a use-after free when the program is closed.
-        if (mImGuiIo->IniFilename != nullptr) {
-            // delete[] mImGuiIo->IniFilename;
-        }
-        if (mImGuiIo->LogFilename != nullptr) {
-            // delete[] mImGuiIo->LogFilename;
-        }
-        // mImGuiIo->IniFilename = nullptr;
-        // mImGuiIo->LogFilename = nullptr;
-    }
 }
 
 void Gui::Init(GuiWindowInitData windowImpl) {
@@ -142,10 +128,10 @@ void Gui::Init(GuiWindowInitData windowImpl) {
     mImGuiIo->FontGlobalScale = 2.0f;
 #endif
 
-    auto imguiIniPath = Context::GetPathRelativeToAppDirectory("imgui.ini");
-    auto imguiLogPath = Context::GetPathRelativeToAppDirectory("imgui_log.txt");
-    mImGuiIo->IniFilename = strcpy(new char[imguiIniPath.length() + 1], imguiIniPath.c_str());
-    mImGuiIo->LogFilename = strcpy(new char[imguiLogPath.length() + 1], imguiLogPath.c_str());
+    mImGuiIniPath = Context::GetPathRelativeToAppDirectory("imgui.ini");
+    mImGuiLogPath = Context::GetPathRelativeToAppDirectory("imgui_log.txt");
+    mImGuiIo->IniFilename = mImGuiIniPath.c_str();
+    mImGuiIo->LogFilename = mImGuiLogPath.c_str();
 
     if (SupportsViewports() &&
         Ship::Context::GetInstance()->GetConsoleVariables()->GetInteger(CVAR_ENABLE_MULTI_VIEWPORTS, 1)) {
@@ -187,13 +173,17 @@ void Gui::ImGuiWMInit() {
     switch (Context::GetInstance()->GetWindow()->GetWindowBackend()) {
         case WindowBackend::FAST3D_SDL_OPENGL:
             SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
-            SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+            if (Ship::Context::GetInstance()->GetConsoleVariables()->GetInteger(CVAR_ALLOW_BACKGROUND_INPUTS, 1)) {
+                SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+            }
             ImGui_ImplSDL2_InitForOpenGL(static_cast<SDL_Window*>(mImpl.Opengl.Window), mImpl.Opengl.Context);
             break;
 #if __APPLE__
         case WindowBackend::FAST3D_SDL_METAL:
             SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
-            SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+            if (Ship::Context::GetInstance()->GetConsoleVariables()->GetInteger(CVAR_ALLOW_BACKGROUND_INPUTS, 1)) {
+                SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+            }
             ImGui_ImplSDL2_InitForMetal(static_cast<SDL_Window*>(mImpl.Metal.Window));
             break;
 #endif
@@ -275,15 +265,19 @@ void Gui::LoadTextureFromRawImage(const std::string& name, const std::string& pa
     auto guiTexture = std::static_pointer_cast<GuiTexture>(
         Context::GetInstance()->GetResourceManager()->LoadResource(path, false, initData));
 
+    LoadTextureFromResource(name, guiTexture);
+}
+
+void Gui::LoadTextureFromResource(const std::string& name, std::shared_ptr<GuiTexture> texture) {
     Fast::GfxRenderingAPI* api = mInterpreter.lock()->GetCurrentRenderingAPI();
 
     // TODO: Nothing ever unloads the texture from Fast3D here.
-    guiTexture->Metadata.RendererTextureId = api->NewTexture();
-    api->SelectTexture(0, guiTexture->Metadata.RendererTextureId);
+    texture->Metadata.RendererTextureId = api->NewTexture();
+    api->SelectTexture(0, texture->Metadata.RendererTextureId);
     api->SetSamplerParameters(0, false, 0, 0);
-    api->UploadTexture(guiTexture->Data, guiTexture->Metadata.Width, guiTexture->Metadata.Height);
+    api->UploadTexture(texture->Data, texture->Metadata.Width, texture->Metadata.Height);
 
-    mGuiTextures[name] = guiTexture->Metadata;
+    mGuiTextures[name] = texture->Metadata;
 }
 
 bool Gui::SupportsViewports() {
@@ -571,14 +565,7 @@ void Gui::DrawMenu() {
                    GetMenuBar()) {
             GetMenuBar()->ToggleVisibility();
         }
-        if (!GetMenuOrMenubarVisible()) {
-            Context::GetInstance()->GetWindow()->SetMouseCapture(wnd->ShouldAutoCaptureMouse());
-        } else {
-            Context::GetInstance()->GetWindow()->SetMouseCapture(false);
-            Context::GetInstance()->GetWindow()->SetCursorVisibility(true);
-            auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Context::GetInstance()->GetWindow());
-            mCursorVisibleTicks = mCursorVisibleSeconds * wnd->GetTargetFps();
-        }
+        Ship::Context::GetInstance()->GetWindow()->GetMouseStateManager()->UpdateMouseCapture();
         if (Ship::Context::GetInstance()->GetConsoleVariables()->GetInteger(CVAR_IMGUI_CONTROLLER_NAV, 0) &&
             GetMenuOrMenubarVisible()) {
             mImGuiIo->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
@@ -627,39 +614,7 @@ void Gui::HandleMouseCapture() {
     }
 }
 
-void Gui::CursorTimeoutTick() {
-    auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Context::GetInstance()->GetWindow());
-    if (wnd->ShouldForceCursorVisibility() || wnd->IsMouseCaptured()) {
-        return;
-    }
-
-    Ship::Coords mousePos = wnd->GetMousePos();
-    bool mouseMoved = abs(mousePos.x - mPrevMousePos.x) > 0 || abs(mousePos.y - mPrevMousePos.y) > 0;
-    mPrevMousePos = mousePos;
-
-    if (mouseMoved) {
-        wnd->SetCursorVisibility(true);
-        mCursorVisibleTicks = mCursorVisibleSeconds * wnd->GetTargetFps();
-        return;
-    }
-
-    if (mCursorVisibleTicks == 0) {
-        wnd->SetCursorVisibility(false);
-        mCursorVisibleTicks = -1;
-        return;
-    }
-
-    if (mCursorVisibleTicks > 0) {
-        mCursorVisibleTicks--;
-    }
-}
-
-void Gui::SetCursorVisibilityTime(int32_t seconds) {
-    mCursorVisibleSeconds = seconds;
-}
-
 void Gui::StartFrame() {
-    CursorTimeoutTick();
     HandleMouseCapture();
     ImGuiBackendNewFrame();
     ImGuiWMNewFrame();

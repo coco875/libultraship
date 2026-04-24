@@ -1,5 +1,6 @@
 #include "ship/Context.h"
 #include "ship/controller/controldevice/controller/mapping/keyboard/KeyboardScancodes.h"
+#include <cstring>
 #include <iostream>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -9,6 +10,11 @@
 #include "ship/controller/controldeck/ControlDeck.h"
 #include "ship/debug/CrashHandler.h"
 #include "ship/window/FileDropMgr.h"
+#include "ship/events/EventSystem.h"
+#ifndef DISABLE_SCRIPTING
+#include "ship/scripting/ScriptLoader.h"
+#endif
+#include "ship/security/Keystore.h"
 
 #ifdef _WIN32
 #include <libloaderapi.h>
@@ -44,13 +50,21 @@ Context::~Context() {
     mControlDeck = nullptr;
     mResourceManager = nullptr;
     mConsoleVariables = nullptr;
+    mEventSystem = nullptr;
+#ifndef DISABLE_SCRIPTING
+    if (mScriptLoader) {
+        mScriptLoader->UnloadAll();
+    }
+    mScriptLoader = nullptr;
+#endif
+    mKeystore = nullptr;
     GetConfig()->Save();
     mConfig = nullptr;
     spdlog::shutdown();
 }
 
 std::shared_ptr<Context>
-Context::CreateInstance(const std::string name, const std::string shortName, const std::string configFilePath,
+Context::CreateInstance(const std::string& name, const std::string& shortName, const std::string& configFilePath,
                         const std::vector<std::string>& archivePaths, const std::unordered_set<uint32_t>& validHashes,
                         uint32_t reservedThreadCount, AudioSettings audioSettings, std::shared_ptr<Window> window,
                         std::shared_ptr<ControlDeck> controlDeck) {
@@ -70,8 +84,8 @@ Context::CreateInstance(const std::string name, const std::string shortName, con
     return GetInstance();
 }
 
-std::shared_ptr<Context> Context::CreateUninitializedInstance(const std::string name, const std::string shortName,
-                                                              const std::string configFilePath) {
+std::shared_ptr<Context> Context::CreateUninitializedInstance(const std::string& name, const std::string& shortName,
+                                                              const std::string& configFilePath) {
     if (mContext.expired()) {
         auto shared = std::make_shared<Context>(name, shortName, configFilePath);
         mContext = shared;
@@ -93,7 +107,11 @@ bool Context::Init(const std::vector<std::string>& archivePaths, const std::unor
     return InitLogging() && InitConfiguration() && InitConsoleVariables() &&
            InitResourceManager(archivePaths, validHashes, reservedThreadCount) && InitControlDeck(controlDeck) &&
            InitCrashHandler() && InitConsole() && InitWindow(window) && InitAudio(audioSettings) && InitGfxDebugger() &&
-           InitFileDropMgr();
+#ifndef DISABLE_SCRIPTING
+           InitEventSystem() && InitFileDropMgr() && InitScriptLoader();
+#else
+           InitEventSystem() && InitFileDropMgr();
+#endif
 }
 
 bool Context::InitLogging(spdlog::level::level_enum debugBuildLogLevel,
@@ -199,10 +217,13 @@ bool Context::InitConsoleVariables() {
 }
 
 bool Context::InitResourceManager(const std::vector<std::string>& archivePaths,
-                                  const std::unordered_set<uint32_t>& validHashes, uint32_t reservedThreadCount) {
+                                  const std::unordered_set<uint32_t>& validHashes, uint32_t reservedThreadCount,
+                                  const bool allowEmptyPaths) {
     if (GetResourceManager() != nullptr) {
         return true;
     }
+
+    InitKeystore();
 
     mMainPath = GetConfig()->GetString("Game.Main Archive", GetAppDirectoryPath());
     mPatchesPath = GetConfig()->GetString("Game.Patches Archive", GetAppDirectoryPath() + "/mods");
@@ -218,7 +239,7 @@ bool Context::InitResourceManager(const std::vector<std::string>& archivePaths,
         GetResourceManager()->Init(archivePaths, validHashes, reservedThreadCount);
     }
 
-    if (!GetResourceManager()->IsLoaded()) {
+    if (!allowEmptyPaths && !GetResourceManager()->IsLoaded()) {
 #if defined(__SWITCH__)
         printf("Main OTR file not found!\n");
 #else
@@ -347,55 +368,113 @@ bool Context::InitFileDropMgr() {
     return true;
 }
 
-std::shared_ptr<ConsoleVariable> Context::GetConsoleVariables() {
+bool Context::InitEventSystem() {
+    if (GetEventSystem() != nullptr) {
+        return true;
+    }
+
+    mEventSystem = std::make_shared<EventSystem>();
+    if (GetEventSystem() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize event system");
+        return false;
+    }
+    return true;
+}
+
+#ifndef DISABLE_SCRIPTING
+bool Context::InitScriptLoader(std::unordered_map<std::string, std::string> compileDefines, int codeVersion,
+                               std::string buildOptions, std::vector<std::string> includePaths,
+                               std::vector<std::string> libraryPaths, std::vector<std::string> libraries) {
+    if (GetScriptLoader() != nullptr) {
+        return true;
+    }
+
+    mScriptLoader = std::make_shared<ScriptLoader>(compileDefines, codeVersion, buildOptions, includePaths,
+                                                   libraryPaths, libraries);
+    if (GetScriptLoader() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize script system");
+        return false;
+    }
+    return true;
+}
+#endif // DISABLE_SCRIPTING
+
+bool Context::InitKeystore() {
+    if (GetKeystore() != nullptr) {
+        return true;
+    }
+
+    mKeystore = std::make_shared<Keystore>();
+    if (GetKeystore() == nullptr) {
+        SPDLOG_ERROR("Failed to initialize keystore system");
+        return false;
+    }
+    return true;
+}
+
+std::shared_ptr<ConsoleVariable> Context::GetConsoleVariables() const {
     return mConsoleVariables;
 }
 
-std::shared_ptr<spdlog::logger> Context::GetLogger() {
+std::shared_ptr<spdlog::logger> Context::GetLogger() const {
     return mLogger;
 }
 
-std::shared_ptr<Config> Context::GetConfig() {
+std::shared_ptr<Config> Context::GetConfig() const {
     return mConfig;
 }
 
-std::shared_ptr<ResourceManager> Context::GetResourceManager() {
+std::shared_ptr<ResourceManager> Context::GetResourceManager() const {
     return mResourceManager;
 }
 
-std::shared_ptr<ControlDeck> Context::GetControlDeck() {
+std::shared_ptr<ControlDeck> Context::GetControlDeck() const {
     return mControlDeck;
 }
 
-std::shared_ptr<CrashHandler> Context::GetCrashHandler() {
+std::shared_ptr<CrashHandler> Context::GetCrashHandler() const {
     return mCrashHandler;
 }
 
-std::shared_ptr<Window> Context::GetWindow() {
+std::shared_ptr<Window> Context::GetWindow() const {
     return mWindow;
 }
 
-std::shared_ptr<Console> Context::GetConsole() {
+std::shared_ptr<Console> Context::GetConsole() const {
     return mConsole;
 }
 
-std::shared_ptr<Audio> Context::GetAudio() {
+std::shared_ptr<Audio> Context::GetAudio() const {
     return mAudio;
 }
 
-std::shared_ptr<Fast::GfxDebugger> Context::GetGfxDebugger() {
+std::shared_ptr<Fast::GfxDebugger> Context::GetGfxDebugger() const {
     return mGfxDebugger;
 }
 
-std::shared_ptr<FileDropMgr> Context::GetFileDropMgr() {
+std::shared_ptr<FileDropMgr> Context::GetFileDropMgr() const {
     return mFileDropMgr;
 }
 
-std::string Context::GetName() {
+std::shared_ptr<EventSystem> Context::GetEventSystem() const {
+    return mEventSystem;
+}
+
+#ifndef DISABLE_SCRIPTING
+std::shared_ptr<ScriptLoader> Context::GetScriptLoader() const {
+    return mScriptLoader;
+}
+#endif
+
+std::shared_ptr<Keystore> Context::GetKeystore() const {
+    return mKeystore;
+}
+
+std::string Context::GetName() const {
     return mName;
 }
 
-std::string Context::GetShortName() {
+std::string Context::GetShortName() const {
     return mShortName;
 }
 
@@ -462,7 +541,7 @@ std::string Context::GetAppBundlePath() {
 #endif
 }
 
-std::string Context::GetAppDirectoryPath(std::string appName) {
+std::string Context::GetAppDirectoryPath(const std::string& appName) {
 #if defined(__ANDROID__)
     const char* externaldir = SDL_AndroidGetExternalStoragePath();
     if (externaldir != NULL) {
@@ -476,7 +555,12 @@ std::string Context::GetAppDirectoryPath(std::string appName) {
 #endif
 
 #if defined(__APPLE__)
+    FolderManager foldermanager;
     if (char* fpath = std::getenv("SHIP_HOME")) {
+        const char* appBundleID = strrchr(fpath, '/');
+        if (appBundleID != nullptr) {
+            foldermanager.CreateAppSupportDirectory(appBundleID + 1);
+        }
         if (fpath[0] == '~') {
             const char* home = getenv("HOME") ? getenv("HOME") : getpwuid(getuid())->pw_dir;
             return std::string(home) + std::string(fpath).substr(1);
@@ -493,10 +577,8 @@ std::string Context::GetAppDirectoryPath(std::string appName) {
 #endif
 
 #ifdef NON_PORTABLE
-    if (appName.empty()) {
-        appName = GetInstance()->mShortName;
-    }
-    char* prefpath = SDL_GetPrefPath(NULL, appName.c_str());
+    const std::string& effectiveAppName = appName.empty() ? GetInstance()->mShortName : appName;
+    char* prefpath = SDL_GetPrefPath(NULL, effectiveAppName.c_str());
     if (prefpath != NULL) {
         std::string ret(prefpath);
         SDL_free(prefpath);
@@ -507,15 +589,15 @@ std::string Context::GetAppDirectoryPath(std::string appName) {
     return ".";
 }
 
-std::string Context::GetPathRelativeToAppBundle(const std::string path) {
+std::string Context::GetPathRelativeToAppBundle(const std::string& path) {
     return GetAppBundlePath() + "/" + path;
 }
 
-std::string Context::GetPathRelativeToAppDirectory(const std::string path, std::string appName) {
+std::string Context::GetPathRelativeToAppDirectory(const std::string& path, const std::string& appName) {
     return GetAppDirectoryPath(appName) + "/" + path;
 }
 
-std::string Context::LocateFileAcrossAppDirs(const std::string path, std::string appName) {
+std::string Context::LocateFileAcrossAppDirs(const std::string& path, const std::string& appName) {
     std::string fpath;
 
     // app configuration dir
