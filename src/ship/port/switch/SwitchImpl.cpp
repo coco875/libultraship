@@ -192,6 +192,10 @@ static void on_applet_hook(AppletHookType hook, void* param) {
 
             break;
 
+        case AppletHookType_OnResume:
+            Ship::Switch::ApplyOverclock();
+            break;
+
             /* Performance mode */
         case AppletHookType_OnPerformanceMode:
             Ship::Switch::ApplyOverclock();
