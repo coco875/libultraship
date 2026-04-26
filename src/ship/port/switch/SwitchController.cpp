@@ -90,10 +90,9 @@ bool SwitchController::ReadGyro(uint8_t portIndex, float& pitch, float& yaw, flo
         return false;
     }
 
-    // Keep the same axis mapping/scaling as the original Switch implementation.
     pitch = sixAxisState.angular_velocity.x * 8.0f;
-    yaw = sixAxisState.angular_velocity.z * 8.0f;
-    roll = sixAxisState.angular_velocity.y * 8.0f;
+    yaw = sixAxisState.angular_velocity.y * 8.0f;
+    roll = sixAxisState.angular_velocity.z * 8.0f;
     return true;
 }
 
