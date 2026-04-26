@@ -426,15 +426,13 @@ void GfxWindowBackendSDL2::Init(const char* gameName, const char* gfxApiName, bo
 
         mCtx = SDL_GL_CreateContext(mWnd);
 
+        SDL_GL_MakeCurrent(mWnd, mCtx);
+        SDL_GL_SetSwapInterval(mVsyncEnabled ? 1 : 0);
 #ifdef __SWITCH__
         if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
             printf("Failed to initialize glad\n");
         }
 #endif
-
-        SDL_GL_MakeCurrent(mWnd, mCtx);
-        SDL_GL_SetSwapInterval(mVsyncEnabled ? 1 : 0);
-
         window_impl.Opengl = { mWnd, mCtx };
     } else {
         uint32_t flags = SDL_RENDERER_ACCELERATED;
@@ -622,10 +620,10 @@ void GfxWindowBackendSDL2::HandleSingleEvent(SDL_Event& event) {
         case SDL_WINDOWEVENT:
             switch (event.window.event) {
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
-#ifdef __APPLE__
-                    SDL_GetWindowSize(mWnd, &mWindowWidth, &mWindowHeight);
-#elif defined(__SWITCH__)
+#ifdef __SWITCH__
                     Ship::Switch::GetDisplaySize(&mWindowWidth, &mWindowHeight);
+#elif __APPLE__
+                    SDL_GetWindowSize(mWnd, &mWindowWidth, &mWindowHeight);
 #else
                     SDL_GL_GetDrawableSize(mWnd, &mWindowWidth, &mWindowHeight);
 #endif
@@ -771,11 +769,10 @@ bool GfxWindowBackendSDL2::IsRunning() {
 }
 
 void GfxWindowBackendSDL2::Destroy() {
+    // TODO: destroy _any_ resources used by SDL
 #ifdef __SWITCH__
     Ship::Switch::Exit();
 #endif
-
-    // TODO: destroy _any_ resources used by SDL
     SDL_GL_DeleteContext(mCtx);
     SDL_DestroyWindow(mWnd);
     SDL_DestroyRenderer(mRenderer);

@@ -3,8 +3,18 @@ include(FetchContent)
 find_package(OpenGL QUIET)
 
 #=================== ImGui ===================
+
+set(imgui_switch_patch_file ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/imgui-switch-config.patch)
 set(imgui_fixes_and_config_patch_file ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/imgui-fixes-and-config.patch)
-set(imgui_apply_patch_command ${CMAKE_COMMAND} -Dpatch_file=${imgui_fixes_and_config_patch_file} -Dwith_reset=TRUE -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/git-patch.cmake)
+
+set(imgui_patch_base_command ${CMAKE_COMMAND} -Dpatch_file=${imgui_fixes_and_config_patch_file} -Dwith_reset=TRUE -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/git-patch.cmake)
+set(imgui_patch_switch_command ${CMAKE_COMMAND} -Dpatch_file=${imgui_switch_patch_file} -Dwith_reset=FALSE -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/git-patch.cmake)
+
+if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+    set(imgui_apply_patch_command ${imgui_patch_base_command} COMMAND ${imgui_patch_switch_command})
+else()
+    set(imgui_apply_patch_command ${imgui_patch_base_command})
+endif()
 
 FetchContent_Declare(
     ImGui

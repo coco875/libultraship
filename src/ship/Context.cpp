@@ -31,6 +31,7 @@
 #include "ship/port/switch/SwitchImpl.h"
 #endif
 
+
 namespace Ship {
 std::weak_ptr<Context> Context::mContext;
 
@@ -241,6 +242,7 @@ bool Context::InitResourceManager(const std::vector<std::string>& archivePaths,
 
     if (!allowEmptyPaths && !GetResourceManager()->IsLoaded()) {
 #if defined(__SWITCH__)
+        Ship::Switch::ThrowMissingOTR(mMainPath); // TODO is this needed?
         printf("Main OTR file not found!\n");
 #else
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "OTR file not found",
@@ -256,7 +258,6 @@ bool Context::InitResourceManager(const std::vector<std::string>& archivePaths,
 #ifdef __SWITCH__
     Ship::Switch::Init(PostInitPhase);
 #endif
-
     return true;
 }
 

@@ -29,10 +29,10 @@ get_filename_component(EMBEDDED_KEYS_DIR ${EMBEDDED_KEYS_HEADER} DIRECTORY)
 add_custom_command(
     OUTPUT ${EMBEDDED_KEYS_HEADER}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${EMBEDDED_KEYS_DIR}
-    COMMAND Python3::Interpreter ${GENERATE_KEYS_SCRIPT} 
+    COMMAND Python3::Interpreter ${GENERATE_KEYS_SCRIPT}
             ${EMBEDDED_KEYS_HEADER}
             ${SCRIPT_PUB_KEYS}
-    DEPENDS ${GENERATE_KEYS_SCRIPT} 
+    DEPENDS ${GENERATE_KEYS_SCRIPT}
             ${SCRIPT_PUB_KEYS}
     COMMENT "Generating DefaultKeys.h from all keys in /keys/script/"
     VERBATIM
@@ -94,23 +94,15 @@ find_package(nlohmann_json REQUIRED)
 target_link_libraries(libultraship PUBLIC nlohmann_json::nlohmann_json)
 
 find_package(tinyxml2 REQUIRED)
-
-if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
-    target_link_libraries(libultraship PUBLIC tinyxml2)
-else()
-    target_link_libraries(libultraship PUBLIC tinyxml2::tinyxml2)
-endif()
+target_link_libraries(libultraship PUBLIC tinyxml2::tinyxml2)
 
 find_package(spdlog REQUIRED)
 target_link_libraries(libultraship PUBLIC spdlog::spdlog)
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
     target_link_libraries(libultraship PRIVATE Threads::Threads)
-endif()
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     find_library(COCOA Cocoa)
     target_link_libraries(libultraship PRIVATE ${COCOA})
 
@@ -265,4 +257,3 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU|Clang")
     )
     endif()
 endif()
-

@@ -1,32 +1,48 @@
-# ========= ImGui =========
-target_include_directories(ImGui PRIVATE ${DEVKITPRO}/portlibs/switch/include/ ${DEVKITPRO}/portlibs/switch/include/SDL2)
-
-# ========= spdlog =========
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-add_compile_definitions(SPDLOG_PREVENT_CHILD_FD) # disables fcntl(FD_CLOEXEC)
-set(SPDLOG_BUILD_EXAMPLE OFF)
-FetchContent_Declare(
-        spdlog
-        GIT_REPOSITORY https://github.com/gabime/spdlog.git
-        GIT_TAG v1.14.1
-        PATCH_COMMAND ${spdlog_apply_patch_command}
-        OVERRIDE_FIND_PACKAGE
-)
-FetchContent_MakeAvailable(spdlog)
-target_compile_definitions(spdlog PRIVATE _POSIX_C_SOURCE=200809L) # required for fileno()
+# ========= ImGui =========
+target_include_directories(ImGui PRIVATE ${DEVKITPRO}/portlibs/switch/include/ ${DEVKITPRO}/portlibs/switch/include/SDL2)
 
 #=================== nlohmann-json ===================
 find_package(nlohmann_json QUIET)
 if (NOT ${nlohmann_json_FOUND})
     FetchContent_Declare(
-            nlohmann_json
-            GIT_REPOSITORY https://github.com/nlohmann/json.git
-            GIT_TAG v3.11.3
-            OVERRIDE_FIND_PACKAGE
+        nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG v3.11.3
+        OVERRIDE_FIND_PACKAGE
     )
     FetchContent_MakeAvailable(nlohmann_json)
 endif()
+
+#=================== tinyxml2 ===================
+find_package(tinyxml2 QUIET)
+if (NOT ${tinyxml2_FOUND})
+    set(tinyxml2_BUILD_TESTING OFF)
+    FetchContent_Declare(
+        tinyxml2
+        GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+        GIT_TAG 10.0.0
+        OVERRIDE_FIND_PACKAGE
+    )
+    FetchContent_MakeAvailable(tinyxml2)
+endif()
+
+#=================== spdlog ===================
+find_package(spdlog QUIET)
+if (NOT ${spdlog_FOUND})
+    add_compile_definitions(SPDLOG_PREVENT_CHILD_FD) # disables fcntl(FD_CLOEXEC)
+    set(SPDLOG_BUILD_EXAMPLE OFF)
+    FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog.git
+        GIT_TAG v1.14.1
+        OVERRIDE_FIND_PACKAGE
+    )
+    FetchContent_MakeAvailable(spdlog)
+endif()
+
+target_compile_definitions(spdlog PRIVATE -D_POSIX_C_SOURCE=200809L)
 
 #=================== libzip ===================
 find_package(libzip QUIET)
@@ -40,14 +56,16 @@ if (NOT ${libzip_FOUND})
     set(BUILD_SHARED_LIBS OFF)
     set(ENABLE_ZSTD OFF)
     FetchContent_Declare(
-            libzip
-            GIT_REPOSITORY https://github.com/nih-at/libzip.git
-            GIT_TAG v1.10.1
-            OVERRIDE_FIND_PACKAGE
+        libzip
+        GIT_REPOSITORY https://github.com/nih-at/libzip.git
+        GIT_TAG v1.10.1
+        OVERRIDE_FIND_PACKAGE
     )
     FetchContent_MakeAvailable(libzip)
     list(APPEND ADDITIONAL_LIB_INCLUDES ${libzip_SOURCE_DIR}/lib ${libzip_BINARY_DIR})
 endif()
 
 # ========= StormLib =========
-target_compile_definitions(storm PRIVATE _POSIX_C_SOURCE=200809L)
+if (INCLUDE_MPQ_SUPPORT)
+    target_compile_definitions(StormLib PRIVATE _POSIX_C_SOURCE=200809L)
+endif ()
