@@ -97,39 +97,6 @@ bool SwitchController::ReadGyro(uint8_t portIndex, float& pitch, float& yaw, flo
     return true;
 }
 
-// Debug stuff
-uint64_t SwitchController::GetStyleSet(uint8_t portIndex) {
-    if (!EnsureInitialized(portIndex)) {
-        return 0;
-    }
-
-    auto& controller = mControllers[portIndex];
-    padUpdate(&controller.State);
-    return padGetStyleSet(&controller.State);
-}
-
-// Debug stuff
-int32_t SwitchController::GetActiveStyleDebug(uint8_t portIndex) {
-    const uint64_t styleSet = GetStyleSet(portIndex);
-    if (styleSet & HidNpadStyleTag_NpadFullKey) {
-        return 2;
-    }
-    if (styleSet & HidNpadStyleTag_NpadJoyDual) {
-        return 3;
-    }
-    if (styleSet & HidNpadStyleTag_NpadHandheld) {
-        return 1;
-    }
-    if (styleSet & HidNpadStyleTag_NpadJoyLeft) {
-        return 4;
-    }
-    if (styleSet & HidNpadStyleTag_NpadJoyRight) {
-        return 5;
-    }
-
-    return 0;
-}
-
 void SwitchController::SendRumble(uint8_t portIndex, float lowFrequencyAmplitude, float highFrequencyAmplitude) {
     if (!EnsureInitialized(portIndex)) {
         return;

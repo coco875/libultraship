@@ -22,8 +22,6 @@ class SwitchController {
     static SwitchController& GetInstance();
     bool ReadGyro(uint8_t portIndex, float& pitch, float& yaw, float& roll);
     void SendRumble(uint8_t portIndex, float lowFrequencyAmplitude, float highFrequencyAmplitude);
-    uint64_t GetStyleSet(uint8_t portIndex);
-    int32_t GetActiveStyleDebug(uint8_t portIndex);
 
   private:
     SwitchController() = default;
