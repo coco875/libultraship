@@ -35,11 +35,6 @@ std::shared_ptr<ControllerGyroMapping> GyroMappingFactory::CreateGyroMappingFrom
     return nullptr;
 }
 
-std::shared_ptr<ControllerGyroMapping>
-GyroMappingFactory::CreateDefaultSDLGyroMapping(PhysicalDeviceType physicalDeviceType, uint8_t portIndex) {
-    return std::make_shared<SDLGyroMapping>(portIndex, 1.0f, 0.0f, 0.0f, 0.0f);
-}
-
 std::shared_ptr<ControllerGyroMapping> GyroMappingFactory::CreateGyroMappingFromSDLInput(uint8_t portIndex) {
     std::shared_ptr<ControllerGyroMapping> mapping = nullptr;
 

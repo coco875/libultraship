@@ -9,7 +9,5 @@ class GyroMappingFactory {
   public:
     static std::shared_ptr<ControllerGyroMapping> CreateGyroMappingFromConfig(uint8_t portIndex, std::string id);
     static std::shared_ptr<ControllerGyroMapping> CreateGyroMappingFromSDLInput(uint8_t portIndex);
-    static std::shared_ptr<ControllerGyroMapping> CreateDefaultSDLGyroMapping(PhysicalDeviceType physicalDeviceType,
-                                                                             uint8_t portIndex);
 };
 } // namespace Ship
