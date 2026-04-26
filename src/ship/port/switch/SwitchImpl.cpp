@@ -7,6 +7,7 @@
 #include <spdlog/spdlog.h>
 #include "ship/Context.h"
 #include "ship/audio/Audio.h"
+#include "ship/utils/StringHelper.h"
 
 #include <imgui_internal.h>
 
@@ -20,6 +21,8 @@ static bool isShowingVirtualKeyboard = false;
 
 static SwkbdConfig keyboard;
 static char kbBuffer[256] = { 0 };
+
+HidsysUniquePadId uniquePadIds[8];
 
 void DetectAppletMode();
 
@@ -42,6 +45,10 @@ void Ship::Switch::Init(SwitchPhase phase) {
             if (!hosversionBefore(8, 0, 0)) {
                 clkrstInitialize();
             }
+            hidsysInitialize();
+            padConfigureInput(8, HidNpadStyleSet_NpadStandard);
+            s32 total = 0; // unused
+            hidsysGetUniquePadIds(uniquePadIds, 8, &total);
             break;
     }
 }
@@ -154,6 +161,15 @@ void Ship::Switch::PrintErrorMessageToScreen(const char* str, ...) {
     }
 
     consoleExit(NULL);
+}
+
+char* Ship::Switch::GetControllerUUID(int controller) {
+    HidsysUniquePadSerialNumber serial;
+    hidsysGetUniquePadSerialNumber(uniquePadIds[controller], &serial);
+    char* cuid = serial.serial_number;
+    return SDL_strdup(strlen(cuid) >= 14 && cuid[0] == 'X' && cuid[1] == 'C'
+                          ? cuid
+                          : StringHelper::Sprintf("CID%d0000000000", controller).c_str());
 }
 
 static void on_applet_hook(AppletHookType hook, void* param) {
