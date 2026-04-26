@@ -49,6 +49,12 @@ class ControllerGyro {
     bool SetGyroMappingFromRawPress();
 
     /**
+     * @brief Applies the default gyro mapping for the given device type.
+     * @param physicalDeviceType Device type to apply defaults for.
+     */
+    void AddDefaultMappings(PhysicalDeviceType physicalDeviceType);
+
+    /**
      * @brief Reads gyroscope data from the active mapping and writes it to @p x and @p y.
      * @param x Output X-axis (pitch) gyro value.
      * @param y Output Y-axis (yaw/roll) gyro value.

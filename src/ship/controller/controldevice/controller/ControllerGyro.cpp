@@ -39,6 +39,17 @@ bool ControllerGyro::SetGyroMappingFromRawPress() {
     return true;
 }
 
+void ControllerGyro::AddDefaultMappings(PhysicalDeviceType physicalDeviceType) {
+    auto mapping = GyroMappingFactory::CreateDefaultSDLGyroMapping(physicalDeviceType, mPortIndex);
+    if (mapping == nullptr) {
+        return;
+    }
+
+    SetGyroMapping(mapping);
+    mGyroMapping->SaveToConfig();
+    SaveGyroMappingIdToConfig();
+}
+
 void ControllerGyro::UpdatePad(float& x, float& y) {
     if (mGyroMapping == nullptr) {
         return;
