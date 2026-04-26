@@ -14,6 +14,9 @@
 #define DOCKED_MODE 1
 #define HANDHELD_MODE 0
 
+// Enable nxlink logging for testing
+#define DEBUG
+
 static AppletHookCookie applet_hook_cookie;
 static bool isRunning = true;
 static bool hasFocus = true;
@@ -32,8 +35,8 @@ void Ship::Switch::Init(SwitchPhase phase) {
     switch (phase) {
         case PreInitPhase:
             DetectAppletMode();
-#ifdef DEBUG
             socketInitializeDefault();
+#ifdef DEBUG
             nxlinkStdio();
 #endif
             break;
@@ -54,9 +57,7 @@ void Ship::Switch::Init(SwitchPhase phase) {
 }
 
 void Ship::Switch::Exit() {
-#ifdef DEBUG
     socketExit();
-#endif
     clkrstExit();
     appletSetGamePlayRecordingState(false);
 }
