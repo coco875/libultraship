@@ -1,54 +1,37 @@
 #ifdef __SWITCH__
 #pragma once
 
-#include "controller/Controller.h"
+#include <array>
+#include <cstdint>
 #include <string>
 #include <switch.h>
 
 namespace Ship {
 
+// Small libnx-backed state cache for each logical port used by mapping classes.
 struct NXControllerState {
-    PadState State;
-    HidVibrationDeviceHandle Handles[2][2];
-    HidSixAxisSensorHandle Sensors[4];
+    PadState State = {};
+    HidVibrationDeviceHandle Handles[2][2] = {};
+    HidSixAxisSensorHandle Sensors[4] = {};
+    uint64_t LastExternalRumbleStyle = 0;
+    bool Initialized = false;
 };
 
-class SwitchController : public Controller {
+class SwitchController {
   public:
-    SwitchController(int32_t physicalSlot);
-    bool Open();
-    void Close();
-
-    void ReadFromSource(int32_t virtualSlot) override;
-    void WriteToSource(int32_t virtualSlot, ControllerCallback* controller) override;
-    bool Connected() const override {
-        return mConnected;
-    };
-    bool CanGyro() const override {
-        return true;
-    }
-    bool CanRumble() const override {
-        return true;
-    };
-
-    void ClearRawPress() override {
-    }
-    int32_t ReadRawPress() override;
-
-    const std::string GetButtonName(int32_t virtualSlot, int n64Button) override;
-    const std::string GetControllerName() override;
-
-  protected:
-    void NormalizeStickAxis(int32_t virtualSlot, float x, float y, int16_t axisThreshold, bool isRightStick);
-    void CreateDefaultBinding(int32_t virtualSlot) override;
+    static SwitchController& GetInstance();
+    bool ReadGyro(uint8_t portIndex, float& pitch, float& yaw, float& roll);
+    void SendRumble(uint8_t portIndex, float lowFrequencyAmplitude, float highFrequencyAmplitude);
+    uint64_t GetStyleSet(uint8_t portIndex);
+    int32_t GetActiveStyleDebug(uint8_t portIndex);
 
   private:
-    NXControllerState* mController;
-    std::string GetControllerExtensionName();
-    void UpdateSixAxisSensor(HidSixAxisSensorState& state);
-    int32_t mPhysicalSlot;
+    SwitchController() = default;
+    bool EnsureInitialized(uint8_t portIndex);
+    HidNpadIdType GetNpadId(uint8_t portIndex) const;
+    bool ReadSixAxisState(uint8_t portIndex, HidSixAxisSensorState& state);
 
-    bool mConnected;
+    std::array<NXControllerState, 4> mControllers;
 };
 } // namespace Ship
 #endif

@@ -1,396 +1,173 @@
 #ifdef __SWITCH__
 #include "SwitchController.h"
-#include "core/Window.h"
-#include "menu/ImGuiImpl.h"
-#include "SwitchImpl.h"
-#include <spdlog/spdlog.h>
-#include <ship/utils/StringHelper.h>
-
-#define CONTROLLER_MASK 1UL
+#include <algorithm>
 
 namespace Ship {
 
-SwitchController::SwitchController(int32_t physicalSlot) : Controller(), mPhysicalSlot(physicalSlot) {
-    mController = new NXControllerState();
-    mConnected = false;
+static constexpr uint64_t CONTROLLER_MASK = 1UL;
+
+SwitchController& SwitchController::GetInstance() {
+    static SwitchController instance;
+    return instance;
 }
 
-bool SwitchController::Open() {
-    u64 mPadMask = (CONTROLLER_MASK << mPhysicalSlot) | CONTROLLER_MASK << HidNpadIdType_Handheld;
+HidNpadIdType SwitchController::GetNpadId(uint8_t portIndex) const {
+    const uint8_t clampedIndex = std::min<uint8_t>(portIndex, 3);
+    return static_cast<HidNpadIdType>(HidNpadIdType_No1 + clampedIndex);
+}
 
-    padInitializeWithMask(&mController->State, mPadMask);
-    padUpdate(&mController->State);
-    // Initialize vibration devices
-
-    hidInitializeVibrationDevices(mController->Handles[1], 2, HidNpadIdType_No1, HidNpadStyleTag_NpadJoyDual);
-    hidInitializeVibrationDevices(mController->Handles[0], 2, HidNpadIdType_Handheld, HidNpadStyleTag_NpadHandheld);
-
-    // Initialize six axis sensors
-
-    hidGetSixAxisSensorHandles(&mController->Sensors[0], 1, HidNpadIdType_Handheld, HidNpadStyleTag_NpadHandheld);
-    hidGetSixAxisSensorHandles(&mController->Sensors[1], 1, HidNpadIdType_No1, HidNpadStyleTag_NpadFullKey);
-    hidGetSixAxisSensorHandles(&mController->Sensors[2], 2, HidNpadIdType_No1, HidNpadStyleTag_NpadJoyDual);
-
-    for (int i = 0; i < 4; i++) {
-        hidStartSixAxisSensor(mController->Sensors[i]);
+bool SwitchController::EnsureInitialized(uint8_t portIndex) {
+    if (portIndex >= mControllers.size()) {
+        return false;
     }
 
-    mGuid = std::string(Switch::GetControllerUUID(mPhysicalSlot));
-    mConnected = padIsConnected(&mController->State);
-#ifdef NX_INPUT_DEBUG
-    printf("\033[2J");
-#endif
+    auto& controller = mControllers[portIndex];
+    if (controller.Initialized) {
+        return true;
+    }
+
+    const auto npadId = GetNpadId(portIndex);
+    const uint64_t padMask = (CONTROLLER_MASK << npadId) | (CONTROLLER_MASK << HidNpadIdType_Handheld);
+
+    padInitializeWithMask(&controller.State, padMask);
+    padUpdate(&controller.State);
+
+    hidInitializeVibrationDevices(controller.Handles[0], 2, HidNpadIdType_Handheld, HidNpadStyleTag_NpadHandheld);
+    hidInitializeVibrationDevices(controller.Handles[1], 2, npadId, HidNpadStyleTag_NpadJoyDual);
+
+    hidGetSixAxisSensorHandles(&controller.Sensors[0], 1, HidNpadIdType_Handheld, HidNpadStyleTag_NpadHandheld);
+    hidGetSixAxisSensorHandles(&controller.Sensors[1], 1, npadId, HidNpadStyleTag_NpadFullKey);
+    hidGetSixAxisSensorHandles(&controller.Sensors[2], 2, npadId, HidNpadStyleTag_NpadJoyDual);
+
+    for (auto& sensor : controller.Sensors) {
+        hidStartSixAxisSensor(sensor);
+    }
+
+    controller.Initialized = true;
     return true;
 }
 
-void SwitchController::Close() {
-    mConnected = false;
-
-    for (int i = 0; i < MAXCONTROLLERS; i++) {
-        getPressedButtons(i) = 0;
-        getLeftStickX(i) = 0;
-        getLeftStickY(i) = 0;
-        getRightStickX(i) = 0;
-        getRightStickY(i) = 0;
-        getGyroX(i) = 0;
-        getGyroY(i) = 0;
-    }
-}
-
-void SwitchController::NormalizeStickAxis(int32_t virtualSlot, float x, float y, int16_t axisThreshold,
-                                          bool isRightStick) {
-    auto profile = getProfile(virtualSlot);
-
-    auto ax = x * 85.0f / 32767.0f;
-    auto ay = y * 85.0f / 32767.0f;
-
-    // create scaled circular dead-zone in range {-15 ... +15}
-    auto len = sqrt(ax * ax + ay * ay);
-    if (len < axisThreshold) {
-        len = 0.0f;
-    } else if (len > 85.0) {
-        len = 85.0f / len;
-    } else {
-        len = (len - axisThreshold) * 85.0f / (85.0f - axisThreshold) / len;
-    }
-    ax *= len;
-    ay *= len;
-
-    // bound diagonals to an octagonal range {-68 ... +68}
-    if (ax != 0.0f && ay != 0.0f) {
-        auto slope = ay / ax;
-        auto edgex = copysign(85.0f / (abs(slope) + 16.0f / 69.0f), ax);
-        auto edgey = copysign(std::min(abs(edgex * slope), 85.0f / (1.0f / abs(slope) + 16.0f / 69.0f)), ay);
-        edgex = edgey / slope;
-
-        auto scale = sqrt(edgex * edgex + edgey * edgey) / 85.0f;
-        ax *= scale;
-        ay *= scale;
+bool SwitchController::ReadSixAxisState(uint8_t portIndex, HidSixAxisSensorState& state) {
+    if (!EnsureInitialized(portIndex)) {
+        return false;
     }
 
-    if (isRightStick) {
-        getRightStickX(virtualSlot) = +ax;
-        getRightStickY(virtualSlot) = ay;
-    } else {
-        getLeftStickX(virtualSlot) = +ax;
-        getLeftStickY(virtualSlot) = ay;
-    }
-}
+    auto& controller = mControllers[portIndex];
+    padUpdate(&controller.State);
+    const uint64_t styleSet = padGetStyleSet(&controller.State);
 
-void SwitchController::ReadFromSource(int32_t virtualSlot) {
-    auto profile = getProfile(virtualSlot);
-    PadState* state = &mController->State;
-    padUpdate(state);
-
-    const auto pressedBtns = padGetButtons(state);
-
-    getPressedButtons(virtualSlot) = 0;
-    getLeftStickX(virtualSlot) = 0;
-    getLeftStickY(virtualSlot) = 0;
-    getRightStickX(virtualSlot) = 0;
-    getRightStickY(virtualSlot) = 0;
-    getGyroX(virtualSlot) = 0;
-    getGyroY(virtualSlot) = 0;
-
-    int16_t stickX = 0;
-    int16_t stickY = 0;
-    int16_t camX = 0;
-    int16_t camY = 0;
-    for (uint32_t id = 0; id < 35; id++) {
-        uint32_t btn = BIT(id);
-        if (!profile->Mappings.contains(btn)) {
-            continue;
-        }
-
-        const auto pBtn = profile->Mappings[btn];
-
-        if (btn >= HidNpadButton_StickLLeft) {
-
-            HidAnalogStickState lStick = padGetStickPos(state, 0);
-            HidAnalogStickState rStick = padGetStickPos(state, 1);
-            float axisX = btn >= HidNpadButton_StickRLeft ? rStick.x : lStick.x;
-            float axisY = btn >= HidNpadButton_StickRLeft ? rStick.y : lStick.y;
-
-            if (pBtn == BTN_STICKRIGHT || pBtn == BTN_STICKLEFT) {
-                stickX = axisX;
-                continue;
-            } else if (pBtn == BTN_STICKDOWN || pBtn == BTN_STICKUP) {
-                stickY = axisY;
-                continue;
-            } else if (pBtn == BTN_VSTICKRIGHT || pBtn == BTN_VSTICKLEFT) {
-                camX = axisX;
-                continue;
-            } else if (pBtn == BTN_VSTICKDOWN || pBtn == BTN_VSTICKUP) {
-                camY = axisY;
-                continue;
-            }
-        }
-
-        if (pressedBtns & btn) {
-            getPressedButtons(virtualSlot) |= pBtn;
-        } else {
-            getPressedButtons(virtualSlot) &= ~pBtn;
-        }
-    }
-
-    if (stickX || stickY) {
-        NormalizeStickAxis(virtualSlot, stickX, stickY, profile->AxisDeadzones[0], false);
-    }
-
-    if (camX || camY) {
-        NormalizeStickAxis(virtualSlot, camX, camY, profile->AxisDeadzones[2], true);
-    }
-
-    if (profile->UseGyro) {
-        HidSixAxisSensorState sixaxis = { 0 };
-        UpdateSixAxisSensor(sixaxis);
-
-#ifdef NX_INPUT_DEBUG
-        printf("\x1b[0;0H");
-        printf("Acceleration:     x=% .4f, y=% .4f, z=% .4f\n", sixaxis.acceleration.x, sixaxis.acceleration.y,
-               sixaxis.acceleration.z);
-        printf("Angular velocity: x=% .4f, y=% .4f, z=% .4f\n", sixaxis.angular_velocity.x, sixaxis.angular_velocity.y,
-               sixaxis.angular_velocity.z);
-        printf("Angle:            x=% .4f, y=% .4f, z=% .4f\n", sixaxis.angle.x, sixaxis.angle.y, sixaxis.angle.z);
-        printf("Direction matrix:\n"
-               "                  [ % .4f,   % .4f,   % .4f ]\n"
-               "                  [ % .4f,   % .4f,   % .4f ]\n"
-               "                  [ % .4f,   % .4f,   % .4f ]\n",
-               sixaxis.direction.direction[0][0], sixaxis.direction.direction[1][0], sixaxis.direction.direction[2][0],
-               sixaxis.direction.direction[0][1], sixaxis.direction.direction[1][1], sixaxis.direction.direction[2][1],
-               sixaxis.direction.direction[0][2], sixaxis.direction.direction[1][2], sixaxis.direction.direction[2][2]);
-#endif
-
-        float gyroX = sixaxis.angular_velocity.x * 8.0f;
-        float gyroY = sixaxis.angular_velocity.z * 8.0f;
-
-        float gyroDriftX = profile->GyroData[DRIFT_X] / 100.0f;
-        float gyroDriftY = profile->GyroData[DRIFT_Y] / 100.0f;
-        const float gyroSensitivity = profile->GyroData[GYRO_SENSITIVITY];
-
-        if (gyroDriftX == 0) {
-            gyroDriftX = gyroX;
-        }
-
-        if (gyroDriftY == 0) {
-            gyroDriftY = gyroY;
-        }
-
-        profile->GyroData[DRIFT_X] = gyroDriftX * 100.0f;
-        profile->GyroData[DRIFT_Y] = gyroDriftY * 100.0f;
-
-        getGyroX(virtualSlot) = gyroX - gyroDriftX;
-        getGyroY(virtualSlot) = gyroY - gyroDriftY;
-
-        getGyroX(virtualSlot) *= gyroSensitivity;
-        getGyroY(virtualSlot) *= gyroSensitivity;
-    }
-}
-
-void SwitchController::WriteToSource(int32_t virtualSlot, ControllerCallback* controller) {
-    bool useRumble = getProfile(virtualSlot)->UseRumble;
-    float rumbleStrength = getProfile(virtualSlot)->RumbleStrength;
-    PadState* state = &mController->State;
-    HidVibrationValue vibrationValues[2];
-
-    for (int i = 0; i < 2; i++) {
-        float amp = controller->rumble > 0 && useRumble ? rumbleStrength : 0.0f;
-        vibrationValues[i].amp_low = amp;
-        vibrationValues[i].amp_high = amp;
-        vibrationValues[i].freq_low = 160.0f;
-        vibrationValues[i].freq_high = 320.0f;
-    }
-
-    uint8_t target = padIsHandheld(&mController->State);
-    hidSendVibrationValues(mController->Handles[target], vibrationValues, 2);
-    hidSendVibrationValues(mController->Handles[1 - target], vibrationValues, 2);
-    padUpdate(state);
-}
-
-int32_t SwitchController::ReadRawPress() {
-    PadState* state = &mController->State;
-    padUpdate(state);
-    u64 kDown = padGetButtons(state);
-    for (uint32_t i = 0; i < 35; i++) {
-        if (kDown & BIT(i)) {
-            return BIT(i);
-        }
-    }
-
-    return -1;
-}
-
-const std::string SwitchController::GetButtonName(int32_t virtualSlot, int n64Button) {
-    std::map<int32_t, int32_t>& mappings = getProfile(virtualSlot)->Mappings;
-    const auto find =
-        std::find_if(mappings.begin(), mappings.end(),
-                     [n64Button](const std::pair<int32_t, int32_t>& pair) { return pair.second == n64Button; });
-
-    if (find == mappings.end()) {
-        return "Unknown";
-    }
-
-    uint32_t btn = find->first;
-
-    switch (btn) {
-        case HidNpadButton_A:
-            return "A";
-        case HidNpadButton_B:
-            return "B";
-        case HidNpadButton_X:
-            return "X";
-        case HidNpadButton_Y:
-            return "Y";
-        case HidNpadButton_Left:
-            return "D-pad Left";
-        case HidNpadButton_Right:
-            return "D-pad Right";
-        case HidNpadButton_Up:
-            return "D-pad Up";
-        case HidNpadButton_Down:
-            return "D-pad Down";
-        case HidNpadButton_ZL:
-            return "ZL";
-        case HidNpadButton_ZR:
-            return "ZR";
-        case HidNpadButton_L:
-            return "L";
-        case HidNpadButton_R:
-            return "R";
-        case HidNpadButton_Plus:
-            return "+ (START)";
-        case HidNpadButton_Minus:
-            return "- (SELECT)";
-        case HidNpadButton_StickR:
-            return "Stick Button R";
-        case HidNpadButton_StickL:
-            return "Stick Button L";
-        case HidNpadButton_StickRLeft:
-            return "Right Stick Left";
-        case HidNpadButton_StickRRight:
-            return "Right Stick Right";
-        case HidNpadButton_StickRUp:
-            return "Right Stick Up";
-        case HidNpadButton_StickRDown:
-            return "Right Stick Down";
-        case HidNpadButton_StickLLeft:
-            return "Left Stick Left";
-        case HidNpadButton_StickLRight:
-            return "Left Stick Right";
-        case HidNpadButton_StickLUp:
-            return "Left Stick Up";
-        case HidNpadButton_StickLDown:
-            return "Left Stick Down";
-    }
-
-    return "Unknown";
-}
-
-const std::string SwitchController::GetControllerName() {
-    return "Switch Controller #" + std::to_string(mPhysicalSlot + 1) + " (" + GetControllerExtensionName() + ")";
-}
-
-void SwitchController::CreateDefaultBinding(int32_t virtualSlot) {
-    auto profile = getProfile(virtualSlot);
-    profile->Mappings.clear();
-    profile->AxisDeadzones.clear();
-    profile->AxisMinimumPress.clear();
-    profile->GyroData.clear();
-
-    profile->Version = DEVICE_PROFILE_CURRENT_VERSION;
-    profile->UseRumble = true;
-    profile->RumbleStrength = 1.0f;
-    profile->UseGyro = false;
-    profile->Mappings[HidNpadButton_StickRRight] = BTN_CRIGHT;
-    profile->Mappings[HidNpadButton_StickRLeft] = BTN_CLEFT;
-    profile->Mappings[HidNpadButton_StickRDown] = BTN_CDOWN;
-    profile->Mappings[HidNpadButton_StickRUp] = BTN_CUP;
-    profile->Mappings[HidNpadButton_ZR] = BTN_R;
-    profile->Mappings[HidNpadButton_L] = BTN_L;
-    profile->Mappings[HidNpadButton_Right] = BTN_DRIGHT;
-    profile->Mappings[HidNpadButton_Left] = BTN_DLEFT;
-    profile->Mappings[HidNpadButton_Down] = BTN_DDOWN;
-    profile->Mappings[HidNpadButton_Up] = BTN_DUP;
-    profile->Mappings[HidNpadButton_Plus] = BTN_START;
-    profile->Mappings[HidNpadButton_ZL] = BTN_Z;
-    profile->Mappings[HidNpadButton_B] = BTN_B;
-    profile->Mappings[HidNpadButton_A] = BTN_A;
-    profile->Mappings[HidNpadButton_StickLRight] = BTN_STICKRIGHT;
-    profile->Mappings[HidNpadButton_StickLLeft] = BTN_STICKLEFT;
-    profile->Mappings[HidNpadButton_StickLDown] = BTN_STICKDOWN;
-    profile->Mappings[HidNpadButton_StickLUp] = BTN_STICKUP;
-
-    for (int i = 0; i < 4; i++) {
-        profile->AxisDeadzones[i] = 16.0f;
-        profile->AxisMinimumPress[i] = 7680.0f;
-    }
-
-    profile->GyroData[DRIFT_X] = 0.0f;
-    profile->GyroData[DRIFT_Y] = 0.0f;
-    profile->GyroData[GYRO_SENSITIVITY] = 1.0f;
-}
-
-void SwitchController::UpdateSixAxisSensor(HidSixAxisSensorState& state) {
-    u64 styleSet = padGetStyleSet(&mController->State);
     if (styleSet & HidNpadStyleTag_NpadFullKey) {
-        hidGetSixAxisSensorStates(mController->Sensors[1], &state, 1);
-    } else if (styleSet & HidNpadStyleTag_NpadJoyDual) {
-        u64 attrib = padGetAttributes(&mController->State);
-        if (attrib & HidNpadAttribute_IsLeftConnected) {
-            hidGetSixAxisSensorStates(mController->Sensors[2], &state, 1);
-        } else if (attrib & HidNpadAttribute_IsRightConnected) {
-            hidGetSixAxisSensorStates(mController->Sensors[3], &state, 1);
+        hidGetSixAxisSensorStates(controller.Sensors[1], &state, 1);
+        return true;
+    }
+
+    if (styleSet & HidNpadStyleTag_NpadJoyDual) {
+        const uint64_t attributes = padGetAttributes(&controller.State);
+        if (attributes & HidNpadAttribute_IsLeftConnected) {
+            hidGetSixAxisSensorStates(controller.Sensors[2], &state, 1);
+            return true;
         }
-    } else if (styleSet & HidNpadStyleTag_NpadHandheld) {
-        hidGetSixAxisSensorStates(mController->Sensors[0], &state, 1);
+        if (attributes & HidNpadAttribute_IsRightConnected) {
+            hidGetSixAxisSensorStates(controller.Sensors[3], &state, 1);
+            return true;
+        }
+    }
+
+    if (styleSet & HidNpadStyleTag_NpadHandheld) {
+        hidGetSixAxisSensorStates(controller.Sensors[0], &state, 1);
+        return true;
+    }
+
+    return false;
+}
+
+bool SwitchController::ReadGyro(uint8_t portIndex, float& pitch, float& yaw, float& roll) {
+    HidSixAxisSensorState sixAxisState = {};
+    if (!ReadSixAxisState(portIndex, sixAxisState)) {
+        pitch = 0.0f;
+        yaw = 0.0f;
+        roll = 0.0f;
+        return false;
+    }
+
+    // Keep the same axis mapping/scaling as the original Switch implementation.
+    pitch = sixAxisState.angular_velocity.x * 8.0f;
+    yaw = sixAxisState.angular_velocity.z * 8.0f;
+    roll = sixAxisState.angular_velocity.y * 8.0f;
+    return true;
+}
+
+// Debug stuff
+uint64_t SwitchController::GetStyleSet(uint8_t portIndex) {
+    if (!EnsureInitialized(portIndex)) {
+        return 0;
+    }
+
+    auto& controller = mControllers[portIndex];
+    padUpdate(&controller.State);
+    return padGetStyleSet(&controller.State);
+}
+
+// Debug stuff
+int32_t SwitchController::GetActiveStyleDebug(uint8_t portIndex) {
+    const uint64_t styleSet = GetStyleSet(portIndex);
+    if (styleSet & HidNpadStyleTag_NpadFullKey) {
+        return 2;
+    }
+    if (styleSet & HidNpadStyleTag_NpadJoyDual) {
+        return 3;
+    }
+    if (styleSet & HidNpadStyleTag_NpadHandheld) {
+        return 1;
+    }
+    if (styleSet & HidNpadStyleTag_NpadJoyLeft) {
+        return 4;
+    }
+    if (styleSet & HidNpadStyleTag_NpadJoyRight) {
+        return 5;
+    }
+
+    return 0;
+}
+
+void SwitchController::SendRumble(uint8_t portIndex, float lowFrequencyAmplitude, float highFrequencyAmplitude) {
+    if (!EnsureInitialized(portIndex)) {
+        return;
+    }
+
+    auto& controller = mControllers[portIndex];
+    padUpdate(&controller.State);
+    const uint64_t styleSet = padGetStyleSet(&controller.State);
+
+    uint64_t externalStyle = 0;
+    if (styleSet & HidNpadStyleTag_NpadFullKey) {
+        externalStyle = HidNpadStyleTag_NpadFullKey;
+    } else if (styleSet & HidNpadStyleTag_NpadJoyDual) {
+        externalStyle = HidNpadStyleTag_NpadJoyDual;
+    }
+
+    if (externalStyle != 0 && controller.LastExternalRumbleStyle != externalStyle) {
+        hidInitializeVibrationDevices(controller.Handles[1], 2, GetNpadId(portIndex),
+                                      static_cast<HidNpadStyleTag>(externalStyle));
+        controller.LastExternalRumbleStyle = externalStyle;
+    }
+
+    HidVibrationValue vibrationValues[2] = {};
+    for (auto& value : vibrationValues) {
+        value.amp_low = std::clamp(lowFrequencyAmplitude, 0.0f, 1.0f);
+        value.amp_high = std::clamp(highFrequencyAmplitude, 0.0f, 1.0f);
+        value.freq_low = 160.0f;
+        value.freq_high = 320.0f;
+    }
+
+    if (padIsHandheld(&controller.State)) {
+        hidSendVibrationValues(controller.Handles[0], vibrationValues, 2);
+    }
+
+    if (externalStyle != 0) {
+        hidSendVibrationValues(controller.Handles[1], vibrationValues, 2);
     }
 }
 
-std::string SwitchController::GetControllerExtensionName() {
-    padUpdate(&mController->State);
-    u32 tagStyle = padGetStyleSet(&mController->State);
-
-    if (tagStyle & HidNpadStyleTag_NpadFullKey) {
-        return "Pro Controller";
-    }
-
-    if (tagStyle & HidNpadStyleTag_NpadHandheld) {
-        return "Nintendo Switch";
-    }
-
-    if (tagStyle & HidNpadStyleTag_NpadJoyLeft) {
-        return "Left Joy-Con";
-    }
-
-    if (tagStyle & HidNpadStyleTag_NpadJoyRight) {
-        return "Right Joy-Con";
-    }
-
-    if (tagStyle & HidNpadStyleTag_NpadJoyDual) {
-        return "Dual Joy-Con";
-    }
-
-    return "Disconnected";
-}
 } // namespace Ship
 #endif

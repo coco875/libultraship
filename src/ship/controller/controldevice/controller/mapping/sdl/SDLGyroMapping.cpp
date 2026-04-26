@@ -6,6 +6,9 @@
 #include "ship/config/ConsoleVariable.h"
 #include "ship/utils/StringHelper.h"
 #include "ship/controller/controldeck/ControlDeck.h"
+#ifdef __SWITCH__
+#include "ship/port/switch/SwitchController.h"
+#endif
 
 namespace Ship {
 SDLGyroMapping::SDLGyroMapping(uint8_t portIndex, float sensitivity, float neutralPitch, float neutralYaw,
@@ -16,6 +19,23 @@ SDLGyroMapping::SDLGyroMapping(uint8_t portIndex, float sensitivity, float neutr
 }
 
 void SDLGyroMapping::Recalibrate() {
+#ifdef __SWITCH__
+    float pitch = 0.0f;
+    float yaw = 0.0f;
+    float roll = 0.0f;
+    if (SwitchController::GetInstance().ReadGyro(mPortIndex, pitch, yaw, roll)) {
+        mNeutralPitch = pitch;
+        mNeutralYaw = yaw;
+        mNeutralRoll = roll;
+        return;
+    }
+
+    mNeutralPitch = 0.0f;
+    mNeutralYaw = 0.0f;
+    mNeutralRoll = 0.0f;
+    return;
+#endif
+
     for (const auto& [instanceId, gamepad] :
          Context::GetInstance()->GetControlDeck()->GetConnectedPhysicalDeviceManager()->GetConnectedSDLGamepadsForPort(
              mPortIndex)) {
@@ -46,6 +66,21 @@ void SDLGyroMapping::UpdatePad(float& x, float& y) {
         y = 0;
         return;
     }
+
+#ifdef __SWITCH__
+    float pitch = 0.0f;
+    float yaw = 0.0f;
+    float roll = 0.0f;
+    if (!SwitchController::GetInstance().ReadGyro(mPortIndex, pitch, yaw, roll)) {
+        x = 0.0f;
+        y = 0.0f;
+        return;
+    }
+
+    x = (pitch - mNeutralPitch) * mSensitivity;
+    y = (yaw - mNeutralYaw) * mSensitivity;
+    return;
+#endif
 
     for (const auto& [instanceId, gamepad] :
          Context::GetInstance()->GetControlDeck()->GetConnectedPhysicalDeviceManager()->GetConnectedSDLGamepadsForPort(
@@ -108,6 +143,9 @@ void SDLGyroMapping::EraseFromConfig() {
 }
 
 std::string SDLGyroMapping::GetPhysicalDeviceName() {
+#ifdef __SWITCH__
+    return "Switch Controller";
+#endif
     return "SDL Gamepad";
 }
 } // namespace Ship

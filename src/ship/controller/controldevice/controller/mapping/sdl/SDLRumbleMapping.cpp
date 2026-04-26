@@ -4,6 +4,9 @@
 #include "ship/utils/StringHelper.h"
 #include "ship/Context.h"
 #include "ship/controller/controldeck/ControlDeck.h"
+#ifdef __SWITCH__
+#include "ship/port/switch/SwitchController.h"
+#endif
 
 namespace Ship {
 SDLRumbleMapping::SDLRumbleMapping(uint8_t portIndex, uint8_t lowFrequencyIntensityPercentage,
@@ -15,6 +18,12 @@ SDLRumbleMapping::SDLRumbleMapping(uint8_t portIndex, uint8_t lowFrequencyIntens
 }
 
 void SDLRumbleMapping::StartRumble() {
+#ifdef __SWITCH__
+    SwitchController::GetInstance().SendRumble(
+        mPortIndex, mLowFrequencyIntensityPercentage / 100.0f, mHighFrequencyIntensityPercentage / 100.0f);
+    return;
+#endif
+
     for (const auto& [instanceId, gamepad] :
          Context::GetInstance()->GetControlDeck()->GetConnectedPhysicalDeviceManager()->GetConnectedSDLGamepadsForPort(
              mPortIndex)) {
@@ -23,6 +32,11 @@ void SDLRumbleMapping::StartRumble() {
 }
 
 void SDLRumbleMapping::StopRumble() {
+#ifdef __SWITCH__
+    SwitchController::GetInstance().SendRumble(mPortIndex, 0.0f, 0.0f);
+    return;
+#endif
+
     for (const auto& [instanceId, gamepad] :
          Context::GetInstance()->GetControlDeck()->GetConnectedPhysicalDeviceManager()->GetConnectedSDLGamepadsForPort(
              mPortIndex)) {
@@ -71,6 +85,9 @@ void SDLRumbleMapping::EraseFromConfig() {
 }
 
 std::string SDLRumbleMapping::GetPhysicalDeviceName() {
+#ifdef __SWITCH__
+    return "Switch Controller";
+#endif
     return "SDL Gamepad";
 }
 } // namespace Ship
