@@ -2,11 +2,9 @@
 target_include_directories(ImGui PRIVATE ${DEVKITPRO}/portlibs/switch/include/ ${DEVKITPRO}/portlibs/switch/include/SDL2)
 
 # ========= spdlog =========
-set(spdlog_switch_patch_file ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/patches/spdlog-switch.patch)
-set(spdlog_apply_patch_command ${CMAKE_COMMAND} -Dpatch_file=${spdlog_switch_patch_file} -Dwith_reset=TRUE -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies/git-patch.cmake)
-
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
+add_compile_definitions(SPDLOG_PREVENT_CHILD_FD) # disables fcntl(FD_CLOEXEC)
 set(SPDLOG_BUILD_EXAMPLE OFF)
 FetchContent_Declare(
         spdlog
@@ -16,6 +14,7 @@ FetchContent_Declare(
         OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(spdlog)
+target_compile_definitions(spdlog PRIVATE _POSIX_C_SOURCE=200809L) # required for fileno()
 
 #=================== nlohmann-json ===================
 find_package(nlohmann_json QUIET)
