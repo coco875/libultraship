@@ -67,5 +67,5 @@ endif()
 
 # ========= StormLib =========
 if (INCLUDE_MPQ_SUPPORT)
-    target_compile_definitions(StormLib PRIVATE _POSIX_C_SOURCE=200809L)
+    target_compile_definitions(storm PRIVATE _POSIX_C_SOURCE=200809L)
 endif ()
