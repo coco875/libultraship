@@ -14,9 +14,6 @@
 #define DOCKED_MODE 1
 #define HANDHELD_MODE 0
 
-// Enable nxlink logging for testing
-#define DEBUG
-
 static AppletHookCookie applet_hook_cookie;
 static bool isRunning = true;
 static bool hasFocus = true;
@@ -148,22 +145,6 @@ void Ship::Switch::ApplyOverclock(void) {
     }
 }
 
-void Ship::Switch::PrintErrorMessageToScreen(const char* str, ...) {
-    consoleInit(NULL);
-    srand(time(0));
-
-    va_list args;
-    va_start(args, str);
-    vprintf(str, args);
-    va_end(args);
-
-    while (appletMainLoop()) {
-        consoleUpdate(NULL);
-    }
-
-    consoleExit(NULL);
-}
-
 char* Ship::Switch::GetControllerUUID(int controller) {
     HidsysUniquePadSerialNumber serial;
     hidsysGetUniquePadSerialNumber(uniquePadIds[controller], &serial);
@@ -222,6 +203,24 @@ static void on_applet_hook(AppletHookType hook, void* param) {
     }
 }
 
+void Ship::Switch::ShowErrorApplet(const char *format, ...) {
+    ErrorSystemConfig errorConfig = {};
+
+    // Error applet can display up to 2048 bytes
+    char messageBuffer[2048];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(messageBuffer, sizeof(messageBuffer), format, args);
+    va_end(args);
+
+    const Result rc = errorSystemCreate(&errorConfig, messageBuffer, nullptr);
+
+    if (R_SUCCEEDED(rc)) {
+        errorSystemSetResult(&errorConfig, MAKERESULT(400, 1)); // module id, error code
+        errorSystemShow(&errorConfig);
+    }
+}
+
 const char* RandomTexts[] = {
     "Psst, don't forget to blame Melon",
     "Potsanity when?",
@@ -247,17 +246,19 @@ void DetectAppletMode() {
     if (at == AppletType_Application || at == AppletType_SystemApplication)
         return;
 
-    Ship::Switch::PrintErrorMessageToScreen("\x1b[2;2HYou've launched the Ship while in Applet mode."
-                                            "\x1b[4;2HPlease relaunch while in full-memory mode."
-                                            "\x1b[5;2HHold R when opening any game to enter HBMenu."
-                                            "\x1b[44;2H%s.",
-                                            RandomTexts[rand() % 25]);
+    Ship::Switch::ShowErrorApplet("You've launched the Ship while in Applet mode.\n"
+                                  "Please relaunch while in full-memory mode.\n"
+                                  "Hold R when opening any game to enter HBMenu.\n\n"
+                                  "%s.",
+                                  RandomTexts[rand() % 25]);
+    exit(1);
 }
 
-void Ship::Switch::ThrowMissingOTR(std::string OTRPath) {
-    Ship::Switch::PrintErrorMessageToScreen("\x1b[2;2HYou've launched the Ship without the OTR file."
-                                            "\x1b[4;2HPlease relaunch making sure %s exists."
-                                            "\x1b[44;2H%s.",
-                                            OTRPath.c_str(), RandomTexts[rand() % 25]);
+void Ship::Switch::ThrowMissingOTR(std::string otrPath) {
+    Ship::Switch::ShowErrorApplet("You've launched the Ship without an OTR/O2R file.\n"
+                                        "Please relaunch making sure %s exists.\n\n"
+                                        "%s.",
+                                        otrPath.c_str(), RandomTexts[rand() % 25]);
+    exit(2);
 }
 #endif

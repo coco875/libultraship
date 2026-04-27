@@ -25,8 +25,8 @@ class Switch {
     static bool IsRunning();
     static void GetDisplaySize(int* width, int* height);
     static void ApplyOverclock();
-    static void ThrowMissingOTR(std::string OTRPath);
-    static void PrintErrorMessageToScreen(const char* str, ...);
+    static void ShowErrorApplet(const char* format, ...);
+    static void ThrowMissingOTR(std::string otrPath);
     static char* GetControllerUUID(int controller);
 };
 }; // namespace Ship
