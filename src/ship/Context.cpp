@@ -242,7 +242,7 @@ bool Context::InitResourceManager(const std::vector<std::string>& archivePaths,
 
     if (!allowEmptyPaths && !GetResourceManager()->IsLoaded()) {
 #if defined(__SWITCH__)
-        Ship::Switch::ThrowMissingOTR(mMainPath); // TODO is this needed?
+        Ship::Switch::ThrowMissingOTR(mMainPath);
         printf("Main OTR file not found!\n");
 #else
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "OTR file not found",
