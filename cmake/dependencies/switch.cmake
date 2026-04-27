@@ -1,4 +1,7 @@
-include(FetchContent)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+
+# ========= ImGui =========
+target_include_directories(ImGui PRIVATE ${DEVKITPRO}/portlibs/switch/include/ ${DEVKITPRO}/portlibs/switch/include/SDL2)
 
 #=================== nlohmann-json ===================
 find_package(nlohmann_json QUIET)
@@ -28,6 +31,8 @@ endif()
 #=================== spdlog ===================
 find_package(spdlog QUIET)
 if (NOT ${spdlog_FOUND})
+    add_compile_definitions(SPDLOG_PREVENT_CHILD_FD) # disables fcntl(FD_CLOEXEC)
+    set(SPDLOG_BUILD_EXAMPLE OFF)
     FetchContent_Declare(
         spdlog
         GIT_REPOSITORY https://github.com/gabime/spdlog.git
@@ -37,9 +42,7 @@ if (NOT ${spdlog_FOUND})
     FetchContent_MakeAvailable(spdlog)
 endif()
 
-if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
-    target_compile_definitions(spdlog PRIVATE -D_POSIX_C_SOURCE=200809L)
-endif()
+target_compile_definitions(spdlog PRIVATE -D_POSIX_C_SOURCE=200809L)
 
 #=================== libzip ===================
 find_package(libzip QUIET)
@@ -51,6 +54,7 @@ if (NOT ${libzip_FOUND})
     set(BUILD_DOC OFF)
     set(BUILD_OSSFUZZ OFF)
     set(BUILD_SHARED_LIBS OFF)
+    set(ENABLE_ZSTD OFF)
     FetchContent_Declare(
         libzip
         GIT_REPOSITORY https://github.com/nih-at/libzip.git
@@ -60,3 +64,8 @@ if (NOT ${libzip_FOUND})
     FetchContent_MakeAvailable(libzip)
     list(APPEND ADDITIONAL_LIB_INCLUDES ${libzip_SOURCE_DIR}/lib ${libzip_BINARY_DIR})
 endif()
+
+# ========= StormLib =========
+if (INCLUDE_MPQ_SUPPORT)
+    target_compile_definitions(storm PRIVATE _POSIX_C_SOURCE=200809L)
+endif ()

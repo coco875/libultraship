@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.24.0)
 
 option(NON_PORTABLE "Build a non-portable version" OFF)
+option(DISABLE_DLL_LOADER "Disable dynamic library loading support" OFF)
+option(DISABLE_SCRIPTING "Disable TCC-based C mod compilation and scripting system" OFF)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     option(SIGN_LIBRARY "Enable xcode signing" OFF)
@@ -54,8 +56,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     include(cmake/dependencies/linux.cmake)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+    include(cmake/dependencies/openbsd.cmake)
+endif()
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     include(cmake/dependencies/windows.cmake)
+endif()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+    include(cmake/dependencies/switch.cmake)
 endif()
 
 # === Platform Specific Configuration ===
@@ -65,3 +75,10 @@ endif()
 
 # =========== Sources =============
 add_subdirectory("src")
+
+# =========== Tests =============
+option(LUS_BUILD_TESTS "Build unit tests" OFF)
+if(LUS_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory("tests")
+endif()
