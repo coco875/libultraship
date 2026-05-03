@@ -146,7 +146,8 @@ std::shared_ptr<IResource> ResourceManager::LoadResourceProcess(const ResourceId
                     return nullptr;
                 }
             } catch (std::bad_variant_access const& e) {
-                // Ignore the exception. This should never happen. The last check should've returned the resource.
+                // This should never happen. The holds_alternative check above should prevent it.
+                SPDLOG_ERROR("Unexpected bad_variant_access in LoadResourceProcess: {}", e.what());
             }
         }
     }
@@ -307,7 +308,8 @@ ResourceManager::GetCachedResource(std::variant<ResourceLoadError, std::shared_p
 
             return resource;
         } catch (std::bad_variant_access const& e) {
-            // Ignore the exception
+            // This should never happen. The holds_alternative check above should prevent it.
+            SPDLOG_ERROR("Unexpected bad_variant_access in GetCachedResource: {}", e.what());
         }
     }
 

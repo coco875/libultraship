@@ -27,10 +27,10 @@ class Config;
 class ResourceManager;
 class FileDropMgr;
 class EventSystem;
-#ifndef DISABLE_SCRIPTING
+#ifdef ENABLE_SCRIPTING
 class ScriptLoader;
-#endif
 class Keystore;
+#endif
 
 /**
  * @brief Central singleton context for the libultraship engine.
@@ -177,12 +177,12 @@ class Context {
     std::shared_ptr<FileDropMgr> GetFileDropMgr() const;
     /** @brief Returns the EventSystem subsystem. */
     std::shared_ptr<EventSystem> GetEventSystem() const;
-#ifndef DISABLE_SCRIPTING
+#ifdef ENABLE_SCRIPTING
     /** @brief Returns the ScriptLoader subsystem. */
     std::shared_ptr<ScriptLoader> GetScriptLoader() const;
-#endif
     /** @brief Returns the Keystore subsystem used for archive signature verification. */
     std::shared_ptr<Keystore> GetKeystore() const;
+#endif
 
     /** @brief Returns the human-readable application name. */
     std::string GetName() const;
@@ -252,7 +252,7 @@ class Context {
     /** @brief Initializes the EventSystem subsystem. @return true on success. */
     bool InitEventSystem();
 
-#ifndef DISABLE_SCRIPTING
+#ifdef ENABLE_SCRIPTING
     /**
      * @brief Initializes the ScriptLoader subsystem for runtime script compilation.
      * @param compileDefines  Preprocessor defines passed to the compiler.
@@ -266,10 +266,10 @@ class Context {
     bool InitScriptLoader(std::unordered_map<std::string, std::string> compileDefines = {}, int codeVersion = 1,
                           std::string buildOptions = "-g -Wl", std::vector<std::string> includePaths = {},
                           std::vector<std::string> libraryPaths = {}, std::vector<std::string> libraries = {});
-#endif
 
     /** @brief Initializes the Keystore used for verifying signed archives. @return true on success. */
     bool InitKeystore();
+#endif
 
   protected:
     Context() = default;
@@ -289,10 +289,10 @@ class Context {
     std::shared_ptr<Fast::GfxDebugger> mGfxDebugger;
     std::shared_ptr<FileDropMgr> mFileDropMgr;
     std::shared_ptr<EventSystem> mEventSystem;
-#ifndef DISABLE_SCRIPTING
+#ifdef ENABLE_SCRIPTING
     std::shared_ptr<ScriptLoader> mScriptLoader;
-#endif
     std::shared_ptr<Keystore> mKeystore;
+#endif
 
     std::string mConfigFilePath;
     std::string mMainPath;

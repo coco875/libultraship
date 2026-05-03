@@ -78,7 +78,7 @@ target_sources(libultraship PRIVATE ${Source_Files__Events})
 
 #=================== Scripting ===================
 
-if(NOT DISABLE_SCRIPTING)
+if(ENABLE_SCRIPTING)
     file(GLOB_RECURSE Source_Files__Scripting RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "scripting/*.cpp")
     source_group("scripting" FILES ${Source_Files__Scripting})
     target_sources(libultraship PRIVATE ${Source_Files__Scripting})
@@ -86,9 +86,11 @@ endif()
 
 #=================== Security ===================
 
-file(GLOB_RECURSE Source_Files__Security RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "security/*.cpp")
-source_group("security" FILES ${Source_Files__Security})
-target_sources(libultraship PRIVATE ${Source_Files__Security})
+if(ENABLE_SCRIPTING)
+    file(GLOB_RECURSE Source_Files__Security RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "security/*.cpp")
+    source_group("security" FILES ${Source_Files__Security})
+    target_sources(libultraship PRIVATE ${Source_Files__Security})
+endif()
 
 #=================== Port ===================
 

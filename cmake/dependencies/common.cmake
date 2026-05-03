@@ -122,6 +122,25 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(prism)
 
+# prism's CMakeLists.txt calls cmake_minimum_required(VERSION <3.10), which causes
+# CMake to explicitly set CMP0141=OLD in prism's scope (cmake_policy(VERSION) disables
+# all policies newer than the specified version).  With CMP0141=OLD the compile
+# template always appends "/Fd <target>.pdb /FS" to every compile command.  sccache
+# parses the command line, sees "/Fd prism.pdb", and expects that file to exist after
+# compilation.  When our /Z7 override wins (no PDB written) sccache aborts with
+# "failed to open file prism.pdb".
+#
+# The simplest fix is to compile prism without sccache at all (clear the launcher).
+# With the launcher cleared, cl.exe compiles prism directly; /Z7 (embedded debug info)
+# is still applied so no PDB file is written and no race over a shared .pdb occurs.
+if(MSVC AND TARGET prism)
+    set_target_properties(prism PROPERTIES
+        C_COMPILER_LAUNCHER   ""
+        CXX_COMPILER_LAUNCHER ""
+    )
+    target_compile_options(prism PRIVATE $<$<CONFIG:Debug>:/Z7>)
+endif()
+
 #=========== monocypher ===========
 FetchContent_Declare(
     monocypher
@@ -144,7 +163,7 @@ target_include_directories(monocypher PUBLIC
 )
 
 #=========== libtcc ===========
-if(NOT DISABLE_SCRIPTING)
+if(ENABLE_SCRIPTING)
 
 FetchContent_Declare(
     tinycc
@@ -154,9 +173,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(tinycc)
 if(NOT TARGET libtcc)
-    # Enable symbol exporting for Windows DLLs
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-
     if(NOT EXISTS "${tinycc_SOURCE_DIR}/config.h")
         message(STATUS "Configuring TinyCC to generate config.h...")
         if(WIN32)
@@ -234,6 +250,9 @@ if(NOT TARGET libtcc)
         )
     endif()
 
+    # libtcc is LGPL; keep it as a shared library so consumers link against it
+    # dynamically rather than incorporating it into their binary.
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
     add_library(libtcc SHARED
         "${tinycc_SOURCE_DIR}/libtcc.c"
         "${tinycc_BINARY_DIR}/tccdefs_.h"
@@ -257,6 +276,9 @@ if(NOT TARGET libtcc)
             target_compile_definitions(libtcc  PRIVATE __x86_64__ TCC_TARGET_X86_64 _WIN64)
         endif()
         target_compile_definitions(libtcc1 PRIVATE "__faststorefence=__faststorefence_tcc_unused")
+        # MSVC's <assert.h> defines `__assert`, which collides with TCC's internal
+        # `__assert` symbol. Rename TCC's use the same way `__faststorefence` is above.
+        target_compile_definitions(libtcc PRIVATE "__assert=__assert_tcc_unused")
     endif()
 
     set(TCC_SAFE_INCLUDE_DIR "${tinycc_BINARY_DIR}/safe_include")
@@ -295,4 +317,4 @@ if(NOT TARGET libtcc)
     endif()
 endif()
 
-endif() # NOT DISABLE_SCRIPTING
+endif() # ENABLE_SCRIPTING
